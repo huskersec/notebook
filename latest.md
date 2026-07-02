@@ -7,6 +7,7 @@ Setup target (debugee) for debugging:
 bcdedit /debug on
 bcdedit /dbgsettings net hostip:<YOUR_DEBUGGER_IP> port:50000 nodhcp
 bcdedit /set "{dbgsettings}" busparams <output from kdnet for adapter>
+bcdedit /set testsigning on
 ```
 
 Check if supported adapter is present:
@@ -57,6 +58,12 @@ ghidriff.exe .\apr25_vuln_clfs.sys .\may25_patched_clfs.sys
 
 
 HEVD:
+
+Load driver:
+```
+sc create HEVD type= kernel binPath= "<path_to_driver>"
+sc start HEVD
+```
 
 IOCTL decode in windbg:
 ```
