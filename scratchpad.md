@@ -1,12 +1,12 @@
-### scratchpad - random notes ###
+## scratchpad - random notes ###
 
 
-#### ARM binary exploitation: ####
+### ARM binary exploitation: ###
 
 https://github.com/bkerler/exploit_me
 
 
-##### Setup #####
+#### Setup ####
 
 From exploit_me/scripts/setup.sh:
 ```
