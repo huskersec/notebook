@@ -42,9 +42,10 @@ bin/python -m pip install --upgrade pwntools
 
 #### Analysis ####
 
+```
 file
 strings
-
+```
 
 #### Debugging ####
 
