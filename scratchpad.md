@@ -39,3 +39,52 @@ cd pwntools
 bin/python -m pip install --upgrade pip
 bin/python -m pip install --upgrade pwntools
 ```
+
+#### Analysis ####
+
+file
+strings
+
+
+#### Debugging ####
+
+From exploit_me/bin/arm for 32-bit:
+```
+#!/bin/sh
+qemu-arm -g 1234 -L /usr/arm-linux-gnueabi $*
+```
+
+From exploit_me/bin/arm64 for 64-bit:
+```
+#!/bin/sh
+qemu-aarch64 -g 1234 -L /usr/aarch64-linux-gnu $*
+```
+
+Shell 1:
+Execute the target binary - ready for remote debugging on port 1234:
+```
+./arm exploit
+```
+
+Shell 2:
+```
+pwndbg ./exploit
+target remote localhost:1234
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
