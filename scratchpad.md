@@ -178,6 +178,321 @@ Organized by task. Notes for AArch32/ARM targets called out where relevant.
 
 
 
+# pwntools Quick Reference
+
+Exploit-dev / CTF reference. Covers `context`, I/O, packing, cyclic, GDB integration, shellcraft, and a worked template. ARM notes called out where relevant.
+
+---
+
+## Setup
+
+```python
+from pwn import *
+```
+
+That single import pulls in everything below: `context`, `remote`/`process`, `p32`/`u32`, `cyclic`, `asm`, `shellcraft`, `gdb`, `args`, `flat`, etc.
+
+---
+
+## context — set this first, everything reads from it
+
+`context` is global state that packing, `asm`, `shellcraft`, and GDB all consult. Set it once at the top and the rest of the script inherits it.
+
+```python
+context.arch      = 'arm'        # 'amd64','i386','arm','aarch64','mips','thumb', ...
+context.bits      = 32           # usually inferred from arch; override if needed
+context.endian    = 'little'     # 'little' | 'big'
+context.os        = 'linux'
+context.log_level = 'info'       # 'debug' | 'info' | 'warning' | 'error'
+context.terminal  = ['tmux', 'splitw', '-h']   # how gdb.debug() spawns a window
+```
+
+Common shorthand — set several at once:
+
+```python
+context.update(arch='arm', bits=32, endian='little', os='linux')
+# or the binary sets arch/bits/endian for you:
+context.binary = ELF('./target')     # exe = context.binary
+```
+
+| Field | Purpose |
+|---|---|
+| `arch` | Drives `asm`, `shellcraft`, packing widths, GDB |
+| `bits` | 32/64; usually implied by `arch` |
+| `endian` | Byte order for `p*`/`u*` and asm |
+| `os` | Syscall/shellcraft target |
+| `log_level` | Verbosity; `'debug'` prints every byte in/out |
+| `terminal` | Command used to open the GDB window (`tmux` split, or e.g. an x-terminal) |
+
+**Terminal tip:** run the script inside a `tmux` session with `context.terminal = ['tmux','splitw','-h']` and `gdb.debug()` opens the debugger in a side pane. Without a working terminal set, GDB integration can't spawn a visible window.
+
+---
+
+## Logging & args (the DEBUG flag)
+
+```python
+# from the CLI, no code edits:
+#   python exploit.py DEBUG            -> log_level = debug (byte trace)
+#   python exploit.py LOG_LEVEL=warn   -> set explicitly
+#   python exploit.py REMOTE           -> your own gate (see below)
+
+if args.DEBUG:
+    context.log_level = 'debug'
+
+io = remote('host', 1337) if args.REMOTE else process('./target')
+```
+
+`args.NAME` is truthy when `NAME` is passed on the command line; `NAME=value` arrives as a string. `DEBUG` is special-cased to set debug logging automatically.
+
+---
+
+## Byte packing / formatting
+
+```python
+p32(0x41414141)          # -> b'\x41\x41\x41\x41'  (pack, uses context.endian)
+p64(0xdeadbeef)          # 64-bit pack
+u32(b'\x41\x41\x41\x41') # -> 0x41414141           (unpack)
+u64(data)                # 64-bit unpack
+
+p32(x, endian='big')     # override per-call
+u32(data, sign=True)     # signed unpack
+
+# leak handling: pad short leaks before unpacking
+leak = io.recv(3)
+addr = u32(leak.ljust(4, b'\x00'))
+```
+
+**flat / fit — build structured payloads without manual concatenation:**
+
+```python
+payload = flat(
+    b'A' * 76,          # padding to saved PC
+    p32(0x00010509),    # return address
+    arg1, arg2,
+)
+
+# fit() places values at offsets, filling gaps with a cyclic pattern:
+payload = fit({76: p32(ret_addr), 88: p32(arg)})
+```
+
+**ARM note:** null bytes in an address can't pass through argv/`strcpy`. If the address is the *last* thing in the buffer, `strcpy` writes the terminating null for you — send the address minus its trailing null. For a Thumb target set bit 0: `p32(addr | 1)`.
+
+---
+
+## cyclic — offset discovery
+
+```python
+cyclic(200)                  # De Bruijn pattern, 200 bytes
+cyclic_find(0x6161616c)      # -> offset where that 4-byte value sits
+cyclic_find(b'laaa')         # also accepts the raw bytes
+
+# 64-bit: use 8-byte subsequences
+cyclic(200, n=8)
+cyclic_find(0x6161616161616166, n=8)
+```
+
+Workflow: send `cyclic(200)`, crash, take the value in the saved PC (or **LR on ARM**, where a stack smash often lands), `cyclic_find` it to get the padding length.
+
+---
+
+## I/O — send & receive
+
+```python
+io.send(data)            # raw bytes, NO newline
+io.sendline(data)        # appends b'\n'  (watch this for corruption payloads)
+io.sendafter(b'> ', data)      # recvuntil(delim) then send
+io.sendlineafter(b'> ', data)  # the common prompt-driven pattern
+
+io.recv(1024)            # up to n bytes
+io.recvline()            # one line (through \n)
+io.recvuntil(b'flag{')   # read until marker — deterministic sync
+io.recvall(timeout=2)    # read to EOF/timeout — catches final flush on exit
+io.clean()               # drain buffered data
+
+io.interactive()         # hand off to you (drops to a shell / manual I/O)
+```
+
+**The teardown gotcha:** if output shows up under `interactive()` but not without it, the script is exiting before the target's final write is read. Replace `interactive()` with `recvall(timeout=2)` (or `recvuntil(marker)`) to read it explicitly. `recvall` waits for EOF, which is exactly when a libc-buffered program flushes on exit.
+
+---
+
+## GDB integration
+
+```python
+gdbscript = '''
+break *0x00010500
+break main
+continue
+'''
+
+# launch under gdb (needs context.terminal working, e.g. inside tmux):
+io = gdb.debug('./target', gdbscript=gdbscript)
+
+# or attach to an already-running process:
+io = process('./target')
+gdb.attach(io, gdbscript=gdbscript)
+pause()                          # hold the script so you can look before it sends
+
+# point at a specific gdb (e.g. gdb-multiarch for ARM cross-debugging):
+context.gdb_binary = 'gdb-multiarch'
+```
+
+| Piece | Purpose |
+|---|---|
+| `gdb.debug(exe, gdbscript=...)` | Start the target under GDB from the start |
+| `gdb.attach(io, gdbscript=...)` | Attach to a live `process`/`remote` |
+| `gdbscript` (`gdb_commands`) | Commands run at launch — breakpoints, layout, etc. |
+| `context.gdb_binary` | Which GDB to invoke (`gdb-multiarch` for cross-arch/ARM) |
+| `context.terminal` | How the GDB window is spawned |
+
+**Cross-arch:** for ARM binaries run under QEMU-user, `gdb.debug` wires up the QEMU gdbstub; set `context.gdb_binary='gdb-multiarch'` so the host GDB understands ARM. Pair with pwndbg for the richer `telescope`/`stack` views.
+
+---
+
+## asm / disasm
+
+```python
+context.arch = 'arm'
+sc = asm('mov r0, #1')           # assemble -> bytes
+print(disasm(sc))                # bytes -> listing
+
+asm('nop')                       # arch-aware
+```
+
+---
+
+## shellcraft — generated shellcode
+
+```python
+context.arch = 'arm'             # generator is arch-specific
+
+sc  = shellcraft.sh()            # /bin/sh (as asm text)
+sc  = shellcraft.execve('/bin/sh', 0, 0)
+sc  = shellcraft.cat('/etc/passwd')
+raw = asm(shellcraft.sh())       # assemble to raw bytes for the payload
+
+# amd64 example:
+context.arch = 'amd64'
+raw = asm(shellcraft.amd64.linux.sh())
+```
+
+Namespaced by arch/os: `shellcraft.arm.linux.sh()`, `shellcraft.amd64.linux.execve(...)`, etc. When `context.arch`/`os` are set, the short forms resolve to the right variant. Output is assembly text — wrap in `asm()` to get bytes.
+
+---
+
+## Syscalls
+
+```python
+# via shellcraft (readable, arch-aware):
+sc = shellcraft.syscall('SYS_execve', '/bin/sh', 0, 0)
+sc = shellcraft.syscall('SYS_read', 0, buf, 100)
+raw = asm(sc)
+
+# constants are available directly:
+print(constants.SYS_execve)      # arch-correct syscall number
+print(constants.O_RDONLY)
+```
+
+`shellcraft.syscall(...)` emits the register setup + syscall/`svc` instruction for the current `context`. On ARM that's the `svc #0` convention with args in r0–r6 and the number in r7.
+
+---
+
+## ELF / ROP
+
+```python
+exe  = ELF('./target')
+libc = ELF('./libc.so.6')
+
+exe.symbols['main']              # symbol address
+exe.got['puts']                  # GOT entry
+exe.plt['system']                # PLT stub
+exe.address = 0x10000            # rebase (PIE); symbols shift with it
+next(exe.search(b'/bin/sh'))     # find bytes
+
+rop = ROP(exe)
+rop.raw(0x41414141)
+rop.call('system', [next(exe.search(b'/bin/sh\x00'))])
+rop.puts(exe.got['puts'])        # convenience: call puts(got_puts) to leak
+print(rop.dump())                # inspect the chain
+payload = rop.chain()            # -> bytes
+```
+
+---
+
+## Worked template — local ARM stack overflow
+
+```python
+#!/usr/bin/env python3
+from pwn import *
+
+# --- context: set once, everything below inherits it ---
+context.update(arch='arm', bits=32, endian='little', os='linux')
+context.terminal   = ['tmux', 'splitw', '-h']
+context.gdb_binary = 'gdb-multiarch'      # ARM under qemu-user
+if args.DEBUG:
+    context.log_level = 'debug'           # run: python exploit.py DEBUG
+
+exe = context.binary = ELF('./target')
+
+gdbscript = '''
+break *0x00010500
+continue
+'''
+
+def start():
+    if args.GDB:
+        return gdb.debug([exe.path], gdbscript=gdbscript)
+    if args.REMOTE:
+        return remote('host', 1337)
+    return process([exe.path])
+
+io = start()
+
+# --- offset discovery (run once, then hardcode) ---
+# io.sendline(cyclic(200))
+# io.wait(); core = io.corefile
+# offset = cyclic_find(core.pc)          # or core.lr on ARM
+# log.info('offset = %d', offset)
+
+offset  = 76
+ret_addr = 0x00010509                     # target gadget/function
+
+# --- build payload ---
+payload  = flat(
+    b'A' * offset,
+    p32(ret_addr),                        # trailing null handled by strcpy if last
+)
+
+# --- deliver ---
+io.sendlineafter(b'> ', payload)
+
+# --- read the result (do NOT rely on interactive() to flush) ---
+print(io.recvall(timeout=2).decode(errors='replace'))
+
+# io.interactive()   # use when you actually want a shell
+```
+
+Run modes:
+
+```
+python exploit.py            # local, quiet
+python exploit.py DEBUG      # local, byte trace
+python exploit.py GDB        # under gdb in a tmux split
+python exploit.py REMOTE     # against the remote host
+```
+
+---
+
+## Gotcha checklist
+
+- **Output only appears under `interactive()`** → replace with `recvall(timeout=2)`; the script was exiting before the final flush was read.
+- **`sendline` vs `send`** → the appended `\n` (`0x0a`) can corrupt a saved-PC value. Match exactly what reached the target.
+- **"Inappropriate nulls in argv"** → argv/`execve` can't carry interior nulls; a *trailing* null is fine to drop (`strcpy` re-adds it if the address ends the buffer).
+- **Thumb target** → set bit 0 on the address (`addr | 1`).
+- **Offset from LR, not PC** → on ARM a stack smash frequently overwrites the saved LR; `cyclic_find(core.lr)`.
+- **GDB window won't open** → run inside `tmux` and set `context.terminal`; for ARM set `context.gdb_binary='gdb-multiarch'`.
+
+
 
 
 
