@@ -553,7 +553,10 @@ else:
 # T0 - 
 
 ```
-
+Run modes:
+```
+python exploit.py INTERACTIVE    # local, interactive debugging w/ set breakpoint
+```
 
 # exploit_me ARM binary - level 2:
 ```
