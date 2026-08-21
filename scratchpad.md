@@ -75,7 +75,6 @@ target remote localhost:1234
 
 
 
-
 # pwndbg Quick Reference
 
 Organized by task. Notes for AArch32/ARM targets called out where relevant.
@@ -165,6 +164,31 @@ Organized by task. Notes for AArch32/ARM targets called out where relevant.
 | `plist` / `probeleak` | Scan a region for leaked pointers |
 | `errno` | Decode last errno |
 
+## Address arithmetic & offsets
+
+gdb's expression evaluator underlies pwndbg, so you can subtract addresses directly.
+
+| Command | Does |
+|---|---|
+| `p 0xffffd050 - 0xffffd030` | Subtract addresses → offset (decimal by default) |
+| `p/x A - B` / `p/d A - B` | Force hex / decimal output |
+| `p $sp - $fp` | Registers work; untyped, no scaling |
+| `set $buf = 0x...` / `set $ret = 0x...` | Stash addresses as convenience vars |
+| `p/d ($ret - $buf)` | Reusable offset from stashed vars |
+| `p ($ret - $buf) / 4` | Divide by element size (indexed-write index) |
+| `distance A B` | Delta in hex + decimal at once (if build has it) |
+
+**Pointer-scaling gotcha:** if either operand carries a pointer type, gdb divides the byte difference by `sizeof(*ptr)` automatically — `(int*)a - (int*)b` gives bytes/4, not bytes. Force a raw byte difference by casting both to `char*` or `long`:
+
+```
+p (long)&saved_ret - (long)&buf      # raw bytes, no scaling
+p (char*)$reg_a - (char*)$reg_b       # same
+```
+
+Bare hex literals and registers are untyped integers, so `$sp - $fp` is plain math — the scaling surprise only appears when a symbol or typed cast is involved.
+
+**Indexed-write offset workflow:** grab `buf` and the saved-LR slot from `telescope $sp`, stash both with `set`, then `p/d ($ret - $buf)` for the index — divide by element size if it's not a byte array. (For an offset derived from a crash rather than two known addresses, `cyclic -l <value>` is still the faster route.)
+
 ---
 
 ## Workflow notes
@@ -173,9 +197,6 @@ Organized by task. Notes for AArch32/ARM targets called out where relevant.
 - `cyclic -l $pc` (or `$lr` on ARM, since a stack smash often lands the pattern in the saved LR rather than PC) is the fast offset find.
 - On AArch32 targets: use `w` width in `x/` (4-byte words), and remember `telescope` chases 4-byte pointers automatically once gdb knows the arch.
 - ARM frame-reading: locals are addressed as fixed positive displacements off SP after the prologue reserves the frame (`sub sp, sp, #N`), so `str rX, [sp, #off]` is a spill to the local slot at `off`.
-
-
-
 
 
 # pwntools Quick Reference
