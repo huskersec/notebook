@@ -75,6 +75,15 @@ target remote localhost:1234
 
 
 
+
+# Overall exploitation process
+1. analyze next level's function in ghidra for an idea of what the challenge is
+2. copy new pwntools script and based on function in ghidra, grab a target breakpoint address for debugging
+3. format new pwntools script for level's args
+4. debug/exploit
+
+
+
 # pwndbg Quick Reference
 
 Organized by task. Notes for AArch32/ARM targets called out where relevant.
