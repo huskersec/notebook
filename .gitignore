@@ -1,2 +1,9 @@
+
+# Apple
+.DS_Store
+
+# Ignored until re-written
 binexp-cmdhistory.txt
 exploits.md
+
+
