@@ -1059,6 +1059,8 @@ Level 8 Password: "Exploiter"
 ```
 
 # exploit_me ARM binary - level 8:
+
+In terms of type confusion, this level involves making the code treat one object/type as another so the wrong method executes. The type confusion is between two indistinguishable heap types whose only difference is which function pointer they carry.
 ```
 #!/home/dvader/tools/pwntools/bin/python3
 
