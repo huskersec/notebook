@@ -1124,7 +1124,7 @@ else:
 
 '''
 in ghidra - level 8 function:
-```
+
 undefined4 FUN_00010fe8_level_8(undefined4 param_1)
 
 {
@@ -1189,25 +1189,25 @@ undefined4 FUN_00010fe8_level_8(undefined4 param_1)
   }
   return 0;
 }
-```
+
 
 ####################################################
 
 ghidra - pointer to level 9 password:
-```
+
 undefined4 * FUN_00013508_ptr_to_print_level_9_password_here(undefined4 *param_1)
 
 {
   *param_1 = &PTR_FUN_000134a8_level_9_print_password_here_0005fac8;
   return param_1;
 }
-```
+
 
 ####################################################
 
 ghidra - level 9 password print function:
 
-```
+
 void FUN_000134a8_level_9_print_password_here
                (undefined4 param_1,undefined4 param_2,undefined4 param_3,undefined4 param_4)
 
@@ -1216,7 +1216,7 @@ void FUN_000134a8_level_9_print_password_here
                       param_2,param_1);
   return;
 }
-```
+
 
 
 '''
@@ -1225,23 +1225,23 @@ void FUN_000134a8_level_9_print_password_here
 '''
 Strategy - manual testing:
 
-```
+
 └─$ ./exploit Exploiter                                        
 usage: ./exploit Exploiter <cmd>
-```
-```
+
+
 └─$ ./exploit Exploiter hi
 Current g ptr, addr: 0x861d8
 Current b ptr, addr: 0x861c8,407ffd70
 sh: 1: hi: not found
-```
-```
+
+
 └─$ ./exploit Exploiter ls
 Current g ptr, addr: 0x861d8
 Current b ptr, addr: 0x861c8,407ffd70
 arm  arm64  core.919813  dir1  exploit  exploit64  exploit_strings.txt  level2  level3  level4  level7  level8
-```
-```
+
+
 └─$ ./exploit Exploiter $(python -c "print('A'*64)")
 Current g ptr, addr: 0x861d8
 Current b ptr, addr: 0x861c8,407ffd30
@@ -1249,7 +1249,7 @@ sh: 1: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA: not fou
 free(): invalid size
 qemu: uncaught target signal 6 (Aborted) - core dumped
 zsh: IOT instruction  ./exploit Exploiter $(python -c "print('A'*64)")
-```
+
 
 
 '''
