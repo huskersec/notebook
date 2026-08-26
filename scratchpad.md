@@ -1374,3 +1374,64 @@ successful - next password:
 Address: 407FFD7C, Important ptr: 407FFD7C, Important value: 0
 Level 10 Password: "Fun"
 ```
+
+# exploit_me ARM binary - level 10:
+```
+Strategy - manual testing:
+└─$ ./exploit Fun ls  -> displays man page for ls
+
+so, ./exploit Fun "man <input_program>"
+
+└─$ ./exploit Fun ls;whoami
+dvader
+
+└─$ ./exploit Fun ls&&whoami;ping -n 5 127.0.0.1
+dvader
+PING 127.0.0.1 (127.0.0.1) 56(124) bytes of data.
+^C
+--- 127.0.0.1 ping statistics ---
+10 packets transmitted, 0 received, 100% packet loss, time 9201ms
+```
+
+```
+in ghidra:
+
+undefined4 FUN_00010e68_level_11_(undefined4 param_1,int param_2)
+
+{
+  int iVar1;
+  undefined4 *puVar2;
+  undefined4 uVar3;
+  undefined4 uVar4;
+  undefined4 uVar5;
+  
+  iVar1 = FUN_00032d80(*(undefined4 *)(param_2 + 8));
+  puVar2 = (undefined4 *)FUN_00030ce8_malloc(iVar1 + 4);
+  *puVar2 = 0x206e616d;                                             # "man " part of input command
+  *(undefined1 *)(puVar2 + 1) = 0;
+  FUN_0003270c(puVar2,*(undefined4 *)(param_2 + 8));
+  uVar3 = FUN_00034410_software_interrupt();
+  uVar4 = FUN_00034410_software_interrupt();
+  uVar5 = FUN_00034410_software_interrupt();
+  FUN_000344c8(uVar3,uVar4,uVar5);
+  FUN_0001e440_cmd_exec_bin_sh_here(puVar2);
+  iVar1 = FUN_00032730(puVar2,0x3b);                                # 0x3b == ;
+  if (iVar1 != 0) {
+    FUN_0001e5e8_printf("\nLevel 11 Password: \"%s\"\n",s_Violet_0007c314);
+  }
+  FUN_000310dc_free(puVar2);
+  return 0;
+}
+```
+
+```
+successful - next password:
+└─$ ./exploit Fun ";w" 
+What manual page do you want?
+For example, try 'man man'.
+ 12:25:41 up 16 days,  5:07,  1 user,  load average: 0.03, 0.12, 0.09
+USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU  WHAT
+dvader            -                17Aug26         0.00s  0.01s lightdm --session-child 13 24
+
+Level 11 Password: "Violet"
+```
